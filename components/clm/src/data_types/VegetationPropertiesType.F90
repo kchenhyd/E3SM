@@ -146,6 +146,10 @@ module VegetationPropertiesType
      real(r8), allocatable :: crit_gdd2(:)        !Deciduous pheonlogy critical GDD slope
      real(r8)              :: tc_stress           !Critial temperature for moisture stress
 
+     !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
+     integer, allocatable :: nonvascular(:)       ! nonvascular plant lifeform flag (0 or 1-moss or 2-lichen)
+     integer, allocatable :: nfixer(:)            ! N-fixer flag (0 or 1)
+     !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
 
    contains
    procedure, public :: Init => veg_vp_init
@@ -184,6 +188,9 @@ contains
     use pftvarcon , only : lmrha, vcmaxhd, jmaxhd, tpuhd, lmrse, qe, theta_cj
     use pftvarcon , only : bbbopt, mbbopt, nstor, br_xr, tc_stress, lmrhd, crit_gdd1, crit_gdd2
     !
+    !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
+    use pftvarcon , only : nonvascular, nfixer
+    !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
     
     class (vegetation_properties_type) :: this
 
@@ -294,6 +301,12 @@ contains
     allocate( this%br_xr(0:numpft))                              ; this%br_xr(:)                 =nan
     allocate( this%crit_gdd1(0:numpft))                          ; this%crit_gdd1(:)             =nan
     allocate( this%crit_gdd2(0:numpft))                          ; this%crit_gdd2(:)             =nan
+
+    !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
+    allocate(this%nonvascular(0:numpft))                         ; this%nonvascular(:)           =huge(1)
+    allocate(this%nfixer(0:numpft))                              ; this%nfixer(:)                =huge(1)
+    !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
+
     do m = 0,numpft
 
        if (m <= ntree) then
@@ -382,6 +395,12 @@ contains
        this%br_xr(m)        = br_xr(m)
        this%crit_gdd1(m)    = crit_gdd1(m)
        this%crit_gdd2(m)    = crit_gdd2(m)
+ 
+    !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
+       this%nonvascular(m)  = nonvascular(m)
+       this%nfixer(m)       = nfixer(m)
+    !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
+
     end do
     
     do m = 0,numpft
@@ -433,7 +452,7 @@ contains
     this%lamda_ptase   = lamda_ptase
 
     this%tc_stress     = tc_stress
-     
+
   end subroutine veg_vp_init
 
 end module VegetationPropertiesType
