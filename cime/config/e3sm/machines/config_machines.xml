@@ -2166,7 +2166,7 @@
     <OS>CNL</OS>
     <COMPILERS>pgi,pgiacc,intel,cray</COMPILERS>
     <MPILIBS>mpich</MPILIBS>
-    <PROJECT>cli115</PROJECT>
+    <PROJECT>cli127</PROJECT>
     <SAVE_TIMING_DIR>$ENV{PROJWORK}/$PROJECT</SAVE_TIMING_DIR>
     <SAVE_TIMING_DIR_PROJECTS>cli106,cli115,cli127,cli133,csc190</SAVE_TIMING_DIR_PROJECTS>
     <CIME_OUTPUT_ROOT>$ENV{HOME}/acme_scratch/$PROJECT</CIME_OUTPUT_ROOT>
@@ -2367,7 +2367,7 @@
       </modules>
       <modules compiler="intel">
         <command name="load">intel/18.0.1.163</command>
-        <command name="load">papi</command>
+        <command name="load">papi/5.6.0.2</command>
       </modules>
       <modules compiler="cray">
         <command name="load">PrgEnv-cray</command>
