@@ -4,7 +4,6 @@ subroutine scam_use_iop_srf( cam_in )
     use camsrfexch,       only: cam_in_t    
     use physconst,   only: stebol, latvap
     use scamMod
-    use time_manager, only : is_first_step
 
     implicit none
     save
@@ -26,17 +25,8 @@ subroutine scam_use_iop_srf( cam_in )
           endif
           if(have_shflx) cam_in(c)%shf(:ncol) = shflxobs(1)
           if(have_tg) then
-     !       For bit-4-bit reproducibility in Replay mode, 
-     !       preserve the cold-start that is used in the full model
-     !       Else, temperature should be initialized as specified 
-     !       in the IOP forcing file 
-             if (use_camiop .and. is_first_step()) then
-               cam_in(c)%ts(:ncol) = cam_in(c)%ts(:ncol)
-               cam_in(c)%lwup(:ncol) = cam_in(c)%lwup(:ncol) 
-             else 
-               cam_in(c)%ts(:ncol) = tground(1)
-               cam_in(c)%lwup(:ncol) = stebol * tground(1)**4
-             endif
+             cam_in(c)%ts(:ncol) = tground(1)
+             cam_in(c)%lwup(:ncol) = stebol * tground(1)**4
           endif
        end do
     endif
