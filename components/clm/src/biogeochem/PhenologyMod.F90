@@ -2965,6 +2965,8 @@ contains
     ! Determines the flux of C and N from live wood to
     ! dead wood pools, for stem and coarse root.
     ! add phosphorus flux - X.YANG
+    use clm_varcon       , only : secspday
+    use clm_time_manager , only : get_days_per_year
     !
     ! !ARGUMENTS:
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
@@ -2982,6 +2984,7 @@ contains
     real(r8):: ctovr        ! temporary variable for carbon turnover
     real(r8):: ntovr        ! temporary variable for nitrogen turnover
     real(r8):: ptovr        ! temporary variable for phosphorus turnover
+    real(r8):: dayspyr      ! days per year
     !-----------------------------------------------------------------------
 
     associate(                                                                             & 
@@ -2994,6 +2997,8 @@ contains
          livestemc                =>    veg_cs%livestemc                 , & ! Input:  [real(r8) (:) ]  (gC/m2) live stem C                               
          livecrootc               =>    veg_cs%livecrootc                , & ! Input:  [real(r8) (:) ]  (gC/m2) live coarse root C                        
 
+         rhizome_long             =>    veg_vp%rhizome_long             , & ! Input:  [real(r8) (:) ]  rhizome longevity (yrs)                              
+
          livestemn                =>    veg_ns%livestemn               , & ! Input:  [real(r8) (:) ]  (gN/m2) live stem N                               
          livecrootn               =>    veg_ns%livecrootn              , & ! Input:  [real(r8) (:) ]  (gN/m2) live coarse root N                        
 
@@ -3002,19 +3007,25 @@ contains
          
          livestemc_to_deadstemc   =>    veg_cf%livestemc_to_deadstemc     , & ! Output: [real(r8) (:) ]                                                    
          livecrootc_to_deadcrootc =>    veg_cf%livecrootc_to_deadcrootc   , & ! Output: [real(r8) (:) ]                                                    
+         livecrootc_to_litter     =>    veg_cf%livecrootc_to_litter   , & ! Output: [real(r8) (:) ]                                                    
 
          livestemn_to_deadstemn   =>    veg_nf%livestemn_to_deadstemn   , & ! Output: [real(r8) (:) ]                                                    
          livestemn_to_retransn    =>    veg_nf%livestemn_to_retransn    , & ! Output: [real(r8) (:) ]                                                    
          livecrootn_to_deadcrootn =>    veg_nf%livecrootn_to_deadcrootn , & ! Output: [real(r8) (:) ]                                                    
          livecrootn_to_retransn   =>    veg_nf%livecrootn_to_retransn   , & ! Output: [real(r8) (:) ]                                                    
+         livecrootn_to_litter     =>    veg_nf%livecrootn_to_litter   , & ! Output: [real(r8) (:) ]                                                    
  
          livewdcp                 =>    veg_vp%livewdcp                              , & ! Input:  [real(r8) (:) ]  live wood (phloem and ray parenchyma) C:P (gC/gP) 
          deadwdcp                 =>    veg_vp%deadwdcp                              , & ! Input:  [real(r8) (:) ]  dead wood (xylem and heartwood) C:P (gC/gP)       
          livestemp_to_deadstemp   =>    veg_pf%livestemp_to_deadstemp   , & ! Output: [real(r8) (:) ]                                                    
          livestemp_to_retransp    =>    veg_pf%livestemp_to_retransp    , & ! Output: [real(r8) (:) ]                                                    
          livecrootp_to_deadcrootp =>    veg_pf%livecrootp_to_deadcrootp , & ! Output: [real(r8) (:) ]                                                    
-         livecrootp_to_retransp   =>    veg_pf%livecrootp_to_retransp     & ! Output: [real(r8) (:) ]                                              
+         livecrootp_to_retransp   =>    veg_pf%livecrootp_to_retransp   , & ! Output: [real(r8) (:) ]                                              
+         livecrootp_to_litter     =>    veg_pf%livecrootp_to_litter     & ! Output: [real(r8) (:) ]                                              
          )
+
+      
+      dayspyr = get_days_per_year()
 
       ! patch loop
       do fp = 1,num_soilp
@@ -3022,6 +3033,11 @@ contains
 
          ! only calculate these fluxes for woody types
          if (woody(ivt(p)) > 0._r8) then
+            ! These are only used for nonwoody rhizomes
+            livecrootc_to_litter(p) = 0.0_r8
+            livecrootn_to_litter(p) = 0.0_r8
+            livecrootp_to_litter(p) = 0.0_r8
+            
             if ( nu_com .eq. 'RD') then
                ! live stem to dead stem turnover
 
@@ -3074,6 +3090,26 @@ contains
                livecrootp_to_retransp(p)  = ptovr - livecrootp_to_deadcrootp(p)
             end if
 
+         else  ! If not woody, do rhizome turnover
+           if ( nu_com .eq. 'RD') then
+               if(rhizome_long(ivt(p))>0.0_r8) then
+                 ctovr = livecrootc(p) / (rhizome_long(ivt(p))*dayspyr*secspday)
+                 ntovr = livecrootn(p) / (rhizome_long(ivt(p))*dayspyr*secspday)
+                 ptovr = livecrootp(p) / (rhizome_long(ivt(p))*dayspyr*secspday)
+               else
+                 ctovr = 0.0_r8
+                 ntovr = 0.0_r8
+                 ptovr = 0.0_r8
+               endif
+
+               livecrootc_to_litter(p) = ctovr
+               livecrootn_to_litter(p) = ntovr ! This assumes no retranslocation
+               livecrootn_to_retransn(p)  = 0.0_r8
+               
+               livecrootp_to_litter(p) = ptovr
+               livecrootp_to_retransp(p)  = 0.0_r8
+               
+           end if
          end if
 
       end do
@@ -3119,16 +3155,19 @@ contains
 
          leaf_prof                           =>    cnstate_vars%leaf_prof_patch                    , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves                         
          froot_prof                          =>    cnstate_vars%froot_prof_patch                   , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots                     
+         croot_prof                          =>    cnstate_vars%croot_prof_patch                   , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of coarse roots                     
 
          leafc_to_litter                     =>    veg_cf%leafc_to_litter           , & ! Input:  [real(r8) (:)   ]  leaf C litterfall (gC/m2/s)                       
          frootc_to_litter                    =>    veg_cf%frootc_to_litter          , & ! Input:  [real(r8) (:)   ]  fine root N litterfall (gN/m2/s)                  
          livestemc_to_litter                 =>    veg_cf%livestemc_to_litter       , & ! Input:  [real(r8) (:)   ]  live stem C litterfall (gC/m2/s)                  
+         livecrootc_to_litter                 =>    veg_cf%livecrootc_to_litter       , & ! Input:  [real(r8) (:)   ]  live coarse root/rhizome C litterfall (gC/m2/s)  
 !         grainc_to_food                      =>    veg_cf%grainc_to_food            , & ! Input:  [real(r8) (:)   ]  grain C to food (gC/m2/s)                         
          phenology_c_to_litr_met_c           =>    col_cf%phenology_c_to_litr_met_c   , & ! Output: [real(r8) (:,:) ]  C fluxes associated with phenology (litterfall and crop) to litter metabolic pool (gC/m3/s)
          phenology_c_to_litr_cel_c           =>    col_cf%phenology_c_to_litr_cel_c   , & ! Output: [real(r8) (:,:) ]  C fluxes associated with phenology (litterfall and crop) to litter cellulose pool (gC/m3/s)
          phenology_c_to_litr_lig_c           =>    col_cf%phenology_c_to_litr_lig_c   , & ! Output: [real(r8) (:,:) ]  C fluxes associated with phenology (litterfall and crop) to litter lignin pool (gC/m3/s)
 
          livestemn_to_litter                 =>    veg_nf%livestemn_to_litter     , & ! Input:  [real(r8) (:)   ]  livestem N to litter (gN/m2/s)                    
+         livecrootn_to_litter                 =>  veg_nf%livecrootn_to_litter     , & ! Input:  [real(r8) (:)   ]  livecroot/rhizome N to litter (gN/m2/s)             
 !         grainn_to_food                      =>    veg_nf%grainn_to_food          , & ! Input:  [real(r8) (:)   ]  grain N to food (gN/m2/s)                         
          leafn_to_litter                     =>    veg_nf%leafn_to_litter         , & ! Input:  [real(r8) (:)   ]  leaf N litterfall (gN/m2/s)                       
          frootn_to_litter                    =>    veg_nf%frootn_to_litter        , & ! Input:  [real(r8) (:)   ]  fine root N litterfall (gN/m2/s)                  
@@ -3137,6 +3176,7 @@ contains
          phenology_n_to_litr_lig_n           =>    col_nf%phenology_n_to_litr_lig_n , & ! Output: [real(r8) (:,:) ]  N fluxes associated with phenology (litterfall and crop) to litter lignin pool (gN/m3/s)
 
          livestemp_to_litter                 =>    veg_pf%livestemp_to_litter     , & ! Input:  [real(r8) (:)   ]  livestem P to litter (gP/m2/s)                    
+         livecrootp_to_litter                 =>    veg_pf%livecrootp_to_litter     , & ! Input:  [real(r8) (:)   ]  livecroot/rhizome P to litter (gP/m2/s)    
 !         grainp_to_food                      =>    veg_pf%grainp_to_food          , & ! Input:  [real(r8) (:)   ]  grain P to food (gP/m2/s)                         
          leafp_to_litter                     =>    veg_pf%leafp_to_litter         , & ! Input:  [real(r8) (:)   ]  leaf P litterfall (gP/m2/s)                       
          frootp_to_litter                    =>    veg_pf%frootp_to_litter        , & ! Input:  [real(r8) (:)   ]  fine root P litterfall (gP/m2/s)                  
@@ -3202,6 +3242,33 @@ contains
                           + frootp_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
                      phenology_p_to_litr_lig_p(c,j) = phenology_p_to_litr_lig_p(c,j) &
                           + frootp_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
+
+
+                     ! Rhizome litter carbon fluxes. Assume similar to fine roots (B Sulman)
+                     phenology_c_to_litr_met_c(c,j) = phenology_c_to_litr_met_c(c,j) &
+                          + livecrootc_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * croot_prof(p,j)
+                     phenology_c_to_litr_cel_c(c,j) = phenology_c_to_litr_cel_c(c,j) &
+                          + livecrootc_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * croot_prof(p,j)
+                     phenology_c_to_litr_lig_c(c,j) = phenology_c_to_litr_lig_c(c,j) &
+                          + livecrootc_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * croot_prof(p,j)
+
+
+                     ! Rhizome litter nitrogen fluxes
+                     phenology_n_to_litr_met_n(c,j) = phenology_n_to_litr_met_n(c,j) &
+                          + livecrootn_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * croot_prof(p,j)
+                     phenology_n_to_litr_cel_n(c,j) = phenology_n_to_litr_cel_n(c,j) &
+                          + livecrootn_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * croot_prof(p,j)
+                     phenology_n_to_litr_lig_n(c,j) = phenology_n_to_litr_lig_n(c,j) &
+                          + livecrootn_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * croot_prof(p,j)
+
+                     ! Rhizome litter phosphorus fluxes
+                     phenology_p_to_litr_met_p(c,j) = phenology_p_to_litr_met_p(c,j) &
+                          + livecrootp_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * croot_prof(p,j)
+                     phenology_p_to_litr_cel_p(c,j) = phenology_p_to_litr_cel_p(c,j) &
+                          + livecrootp_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * croot_prof(p,j)
+                     phenology_p_to_litr_lig_p(c,j) = phenology_p_to_litr_lig_p(c,j) &
+                          + livecrootp_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * croot_prof(p,j)
+
 
                      ! agroibis puts crop stem litter together with leaf litter
                      ! so I've used the leaf lf_f* parameters instead of making
