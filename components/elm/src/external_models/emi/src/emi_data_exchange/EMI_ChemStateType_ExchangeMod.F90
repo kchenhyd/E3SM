@@ -10,6 +10,9 @@ module EMI_ChemStateType_ExchangeMod
   use EMI_Atm2LndType_Constants
   use EMI_CanopyStateType_Constants
   use EMI_ChemStateType_Constants
+  use EMI_CNCarbonStateType_Constants
+  use EMI_CNNitrogenStateType_Constants
+  use EMI_CNCarbonFluxType_Constants
   use EMI_EnergyFluxType_Constants
   use EMI_SoilHydrologyType_Constants
   use EMI_SoilStateType_Constants
@@ -35,7 +38,7 @@ contains
     ! Pack data from ALM chemstate_vars for EM
     !
     ! !USES:
-    use elm_varpar             , only : nlevsoi, nlevgrnd, nlevsno
+    use elm_varpar             , only : nlevsoi
     !
     implicit none
     !
@@ -47,7 +50,7 @@ contains
     type(chemstate_type)   , intent(in) :: chemstate_vars
     !
     ! !LOCAL_VARIABLES:
-    integer                             :: fc,c,j
+    integer                             :: fc,c,j,k
     class(emi_data), pointer            :: cur_data
     logical                             :: need_to_pack
     integer                             :: istage
