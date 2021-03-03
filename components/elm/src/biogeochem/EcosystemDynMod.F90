@@ -507,6 +507,10 @@ contains
     use SoilLittDecompMod            , only: SoilLittDecompAlloc
     use SoilLittDecompMod            , only: SoilLittDecompAlloc2 !after SoilLittDecompAlloc
 
+    use ExternalModelInterfaceMod , only: EMI_Driver
+    use ExternalModelConstants    , only: EM_ID_ALQUIMIA,EM_ALQUIMIA_SOLVE_STAGE
+    use elm_time_manager          , only: get_step_size_real
+    use elm_varctl                , only: use_alquimia
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds
@@ -521,6 +525,8 @@ contains
     logical                  , intent(in)    :: doalb             ! true = surface albedo calculation time step
     type(cnstate_type)       , intent(inout) :: cnstate_vars
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
+    type(waterstate_type)    , intent(inout) :: waterstate_vars ! BNS: must be inout to work with EMI_driver call, but not expected to change
+    type(waterflux_type)     , intent(in)    :: waterflux_vars
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(soilstate_type)     , intent(inout) :: soilstate_vars
     type(crop_type)          , intent(inout) :: crop_vars
@@ -542,14 +548,35 @@ contains
     event = 'SoilLittDecompAlloc'
     call t_start_lnd(event)
     !----------------------------------------------------------------
-    if(.not.use_elm_interface) then
-       ! directly run elm-bgc
-       ! if (use_elm_interface & use_elm_bgc), then CNDecomAlloc is called in elm_driver
+
+       !----------------------------------------------------------------
+
+    if (use_alquimia) then
+     call t_startf('bgc via alquimia interface')
+   
+     call EMI_Driver(                                                 &
+         em_id             = EM_ID_ALQUIMIA                    , &
+         em_stage          = EM_ALQUIMIA_SOLVE_STAGE            , &
+         dt                = get_step_size_real()                    , &
+         soilstate_vars    = soilstate_vars                        , &
+         carbonstate_vars  = carbonstate_vars                      , &
+         carbonflux_vars   = carbonflux_vars                       , &
+         nitrogenstate_vars= nitrogenstate_vars                , &
+         waterstate_vars   = waterstate_vars                       , &
+         temperature_vars  = temperature_vars)
+     
+     call t_stopf('bgc via alquimia interface')
+
+    elseif( .not.use_elm_interface) then
+       call t_startf('SoilLittDecompAlloc')
        call SoilLittDecompAlloc (bounds, num_soilc, filter_soilc,    &
                   num_soilp, filter_soilp,                     &
                   canopystate_vars, soilstate_vars,            &
+                  temperature_vars, waterstate_vars,           &
                   cnstate_vars, ch4_vars,                      &
-                  dt)
+                  carbonstate_vars, carbonflux_vars,           &
+                  nitrogenstate_vars, nitrogenflux_vars,       &
+                  phosphorusstate_vars,phosphorusflux_vars)
     end if !if(.not.use_elm_interface)
 
     call t_stopf('SoilLittDecompAlloc')
