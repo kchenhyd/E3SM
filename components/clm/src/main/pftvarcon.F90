@@ -94,8 +94,6 @@ module pftvarcon
   real(r8), allocatable :: livewdcp(:)    !live wood (phloem and ray parenchyma) C:P (gC/gP)
   real(r8), allocatable :: deadwdcp(:)    !dead wood (xylem and heartwood) C:P (gC/gP)
 
-
-
   ! for crop
 
   ! These arrays give information about the merge of unused crop types to the types CLM
