@@ -147,8 +147,8 @@ module VegetationPropertiesType
      real(r8)              :: tc_stress           !Critial temperature for moisture stress
 
      !salinity response parameters
-     real(r8), allocatable :: sal_threshold       !Threshold for salinity effects (ppt)
-     real(r8), allocatable :: KM_salinity         !Half saturation constant for omotic inhibition function (ppt)
+     real(r8), allocatable :: sal_threshold(:)       !Threshold for salinity effects (ppt)
+     real(r8), allocatable :: KM_salinity(:)         !Half saturation constant for omotic inhibition function (ppt)
 
    contains
    procedure, public :: Init => veg_vp_init
