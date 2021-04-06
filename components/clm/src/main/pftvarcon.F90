@@ -605,6 +605,8 @@ contains
     allocate( nfixer             (0:mxpft) )
 
     ! salinity parameters -should this be an "if defined MARSH"? -SLL
+    
+    ! salinity parameters
     allocate( sal_threshold (0:mxpft) )
     allocate( KM_salinity (0:mxpft) )
     allocate( osm_inhib (0:mxpft) )
