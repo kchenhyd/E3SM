@@ -155,8 +155,8 @@ module VegetationPropertiesType
      integer, allocatable :: nfixer(:)            ! N-fixer flag (0 or 1)
      !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
      !salinity response parameters
-     real(r8), allocatable :: sal_threshold       !Threshold for salinity effects (ppt)
-     real(r8), allocatable :: KM_salinity         !Half saturation constant for omotic inhibition function (ppt)
+     real(r8), allocatable :: sal_threshold(:)       !Threshold for salinity effects (ppt)
+     real(r8), allocatable :: KM_salinity(:)         !Half saturation constant for omotic inhibition function (ppt)
 
    contains
    procedure, public :: Init => veg_vp_init

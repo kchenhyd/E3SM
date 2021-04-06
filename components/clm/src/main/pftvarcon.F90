@@ -602,7 +602,7 @@ contains
     allocate( needleleaf         (0:mxpft) )
     allocate( nonvascular        (0:mxpft) )
     allocate( nfixer             (0:mxpft) )
-  !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
+
     ! salinity parameters -should this be an "if defined MARSH"? -SLL
     allocate( sal_threshold (0:mxpft) )
     allocate( KM_salinity (0:mxpft) )
@@ -994,9 +994,9 @@ contains
       call ncd_io('tide_coeff_phase_'//trim(tempname),tide_coeff_phase(i), 'read', ncid, readvar=readv, posNOTonfile=.true.)
       if (.not. readv) call endrun(msg="Error: Must specify amp, period, and phase for each tide component: i = "//trim(tempname))
       ! salinity parameters
-      call ncd_io('sal_threshold','sal_threshold(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+      call ncd_io('sal_threshold', sal_threshold(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
       if ( .not. readv ) sal_threshold(:) = 1.8_r8 !placeholder value for now-update with more accurate -SLL
-      call ncd_io('KM_salinity', 'KM_salinity(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+      call ncd_io('KM_salinity', KM_salinity(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
       if ( .not. readv ) KM_salinity(:) = 1.8_r8 !placeholder value for now-update with more accurate -SLL
    enddo
    if(num_tide_comps == 0) then
