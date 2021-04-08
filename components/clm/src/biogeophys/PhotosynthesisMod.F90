@@ -419,7 +419,6 @@ contains
          sal_threshold => veg_vp%sal_threshold                 , & !Input: [real(r8) (:)   ] Threshold salinity concentration to trigger osmotic inhibition (ppt)
          KM_salinity   => veg_vp%KM_salinity                   , & !Input: [real(r8) (:)   ] half saturation constant for osmotic inhibition function
          osm_inhib     => veg_vp%osm_inhib                       & !Input: [real(r8) (:)   ] osmotic inhibition factor
-         )
       
       if (phase == 'sun') then
          par_z     =>    solarabs_vars%parsun_z_patch        ! Input:  [real(r8) (:,:) ]  par absorbed per unit lai for canopy layer (w/m**2)                 
@@ -539,19 +538,17 @@ contains
            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
            mbb(p) = mbbopt(p)
          end if
-#else if (defined MARSH)
-         !SLL add osm_inhib function here
-         !write(iulog, *), 'salinity', salinity(1), 'bbb', bbb(p)
-         !if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
-         !osm_inhib(veg_pp%itype(p)) = (1-salinity(c)/(KM_salinity(veg_pp%itype(p))+salinity(c)))
-         !   bbb(p) = max (bbbopt(p)*btran(p)*(osm_inhib(veg_pp%itype(p))), 1._r8)
-         !   mbb(p) = mbbopt(p)
-         !else 
-         !   osm_inhib(veg_pp%itype(p)) = 1.0_r8
-            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
-            mbb(p) = mbbopt(p)
-         !end if
-         !write(iulog, *), 'osm_inhib', osm_inhib(14), 'bbb', bbb(p)
+
+#elseif (defined MARSH) !SLL adding salinity function
+         for veg_pp%itype(p)
+         osm_inhib(p) = 1-salinity/(KM_salinity(p)+salinity)
+            if salinity .gt.sal_threshold(p) then
+               btran(p) = btran(p)*osm_inhib(p) &
+               bbb(p) = bbb(p)*btran(p)
+            end if
+#else
+         bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
+         mbb(p) = mbbopt(p)
 #endif
 
          ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment 24:253-259
@@ -827,7 +824,7 @@ contains
             ! Adjust for soil water
 
             vcmax_z(p,iv) = vcmax_z(p,iv) * btran(p)
-            lmr_z(p,iv) = lmr_z(p,iv) * btran(p) !will this carry over from the earlier if marsh statement?
+            lmr_z(p,iv) = lmr_z(p,iv) * btran(p) !will this carry over from the earlier if marsh statement? -SLL 4-8-21
 
             ! output variable
             vcmax25_top(p) = vcmax25top
