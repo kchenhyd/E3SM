@@ -416,6 +416,7 @@ contains
          h2o_moss_wc   => veg_ws%h2o_moss_wc                  , & !Input: [real(r8) (:)   ]  Total Moss water content
          h2osfc        => col_ws%h2osfc                       , & !Input: [real(r8) (:)   ]  Surface water
          salinity      => col_ws%salinity                        & ! Input:  [real(r8) (:)   ]  salinity (SLL 4/9/2021)
+         sal_tide      => SoilHydrologyMod%sal_tide
          )
       
       if (phase == 'sun') then
