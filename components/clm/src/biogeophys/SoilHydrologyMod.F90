@@ -125,7 +125,8 @@ contains
          icefrac          =>    soilhydrology_vars%icefrac_col      , & ! Output: [real(r8) (:,:) ]                                                  
          ice              =>    soilhydrology_vars%ice_col          , & ! Output: [real(r8) (:,:) ]  ice len in each VIC layers(ice, mm)              
          max_infil        =>    soilhydrology_vars%max_infil_col    , & ! Output: [real(r8) (:)   ]  maximum infiltration capacity in VIC (mm)          
-         i_0              =>    soilhydrology_vars%i_0_col            & ! Output: [real(r8) (:)   ]  column average soil moisture in top VIC layers (mm)
+         i_0              =>    soilhydrology_vars%i_0_col          , & ! Output: [real(r8) (:)   ]  column average soil moisture in top VIC layers (mm)
+         salinity         =>    col_ws%salinity                       & ! Input:  [real(r8) (:)   ]  salinity (SLL 5/15/20)
          )
 
       ! Get time step
@@ -382,7 +383,6 @@ contains
      integer  :: ii
      real(r8) :: h2osfc_tide
      real(r8) :: h2osfc_before
-     real(r8) :: sal_tide                                   !approximated salinity concentration (proportional to qflx_tide)
      !-----------------------------------------------------------------------
 
      associate(                                                                & 
@@ -599,8 +599,8 @@ contains
                 enddo
                 h2osfc(c) = max(h2osfc(c) + tide_baseline, 0.0)
                 qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime
-                !add sal_tide as salinity proportional to qflx_tide -SLL
-                sal_tide(c) = 30+qflx_tide(c) !30 is from 30 ppt salt in seawater
+                !define salinity cycle proportional to tidal cycle -SLL 4/15/20
+                salinity = 30+qflx_tide(c) !30 is from 30 ppt salt in seawater -SLL
 
 #else
              if(h2osfc(c) >= h2osfc_thresh(c) .and. h2osfcflag/=0) then
