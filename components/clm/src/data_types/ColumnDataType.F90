@@ -1353,6 +1353,18 @@ contains
          avgflag='A', long_name='surface water depth', &
          ptr_col=this%h2osfc)
 
+   !SLL added 4/15/21
+   this%salinity(begc:endc) = spval
+    call hist_addfld1d (fname='SALINITY',  units='ppt',  &
+         avgflag='A', long_name='Salinity concentration', &
+         ptr_col=this%salinity)
+
+   !SLL added 4/15/21
+   this%qflx_tide(begc:endc) = spval
+    call hist_addfld1d (fname='QFLX_TIDE',  units='mm H2O/s',  &
+         avgflag='A', long_name='Tidal flux between marsh columns', &
+         ptr_col=this%qflx_tide)
+
     this%h2osoi_vol(begc:endc,:) = spval
     call hist_addfld2d (fname='H2OSOI',  units='mm3/mm3', type2d='levgrnd', &
          avgflag='A', long_name='volumetric soil water (vegetated landunits only)', &
