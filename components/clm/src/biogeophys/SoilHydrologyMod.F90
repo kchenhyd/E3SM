@@ -379,6 +379,7 @@ contains
      integer  :: days, seconds               !
      integer  :: ii
      real(r8) :: h2osfc_before
+     real(r8) :: sal_tide                                   !approximated salinity concentration (proportional to qflx_tide)
      !-----------------------------------------------------------------------
 
      associate(                                                                & 
@@ -593,6 +594,8 @@ contains
                 enddo
                 h2osfc(c) = max(h2osfc(c) + tide_baseline, 0.0)
                 qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime
+                !add sal_tide as salinity proportional to qflx_tide -SLL
+                sal_tide(c) = 30+qflx_tide(c) !30 is from 30 ppt salt in seawater
 
 #else
              if(h2osfc(c) >= h2osfc_thresh(c) .and. h2osfcflag/=0) then
