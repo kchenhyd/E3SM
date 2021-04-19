@@ -595,7 +595,7 @@ contains
                 h2osfc(c) = max(h2osfc(c) + tide_baseline, 0.0)
                 qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime
                 !define salinity cycle proportional to tidal cycle -SLL 4/15/20
-                salinity = 30+qflx_tide(c) !30 is from 30 ppt salt in seawater -SLL
+                salinity = 30+50*qflx_tide(c) !30 is from 30 ppt salt in seawater -SLL
 
 #else
              if(h2osfc(c) >= h2osfc_thresh(c) .and. h2osfcflag/=0) then
