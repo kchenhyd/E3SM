@@ -433,7 +433,8 @@ contains
           h2osfcflag           =>    soilhydrology_vars%h2osfcflag           , & ! Input:  logical
           icefrac              =>    soilhydrology_vars%icefrac_col          , & ! Output: [real(r8) (:,:) ]  fraction of ice
           h2osoi_vol           =>    waterstate_vars%h2osoi_vol_col          , & ! Input: [real(r8) (:,:) ]  volumetric soil water (0<=h2osoi_vol<=watsat) [m3/m3]
-          zi                   =>    col_pp%zi                                 & ! Input: [real(r8) (:,:) ]  interface level below a "z" level (m)           
+          zi                   =>    col_pp%zi                               , & ! Input: [real(r8) (:,:) ]  interface level below a "z" level (m)           
+         salinity              =>    col_ws%salinity                           & ! Input:  [real(r8) (:)   ]  salinity (SLL 5/15/20)          
               )
 
        dtime = get_step_size()
