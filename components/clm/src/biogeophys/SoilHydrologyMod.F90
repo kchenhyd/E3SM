@@ -590,6 +590,17 @@ contains
                 qflx_h2osfc_surf(c) = min(qflx_h2osfc_surfrate*h2osfc(c)**2.0_r8,h2osfc(c) / dtime) 
              else if (c .eq. 2) then
                 qflx_h2osfc_surf(c) = 0._r8
+                ! bsulman : Changed to use flexible set of parameters up to full NOAA tidal components (37 coefficients)
+                ! Tidal cycle is the sum of all the sinusoidal components
+               h2osfc_before = h2osfc(c)
+               h2osfc(c) = 0.0_r8
+                do ii=1,num_tide_comps
+                  h2osfc(c) =    h2osfc(c)    +  tide_coeff_amp(ii) * sin(2.0_r8*SHR_CONST_PI*(1/tide_coeff_period(ii)*(days*secspday+seconds) + tide_coeff_phase(ii)))
+                enddo
+                h2osfc(c) = max(h2osfc(c) + tide_baseline, 0.0)
+                qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime
+                !define salinity cycle proportional to tidal cycle -SLL 4/15/20
+                salinity = 30+50*qflx_tide(c) !30 is from 30 ppt salt in seawater -SLL
 
                 ! bsulman : Changed to use flexible set of parameters up to full NOAA tidal components (37 coefficients)
                 ! Tidal cycle is the sum of all the sinusoidal components
