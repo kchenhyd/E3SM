@@ -125,8 +125,7 @@ contains
          icefrac          =>    soilhydrology_vars%icefrac_col      , & ! Output: [real(r8) (:,:) ]                                                  
          ice              =>    soilhydrology_vars%ice_col          , & ! Output: [real(r8) (:,:) ]  ice len in each VIC layers(ice, mm)              
          max_infil        =>    soilhydrology_vars%max_infil_col    , & ! Output: [real(r8) (:)   ]  maximum infiltration capacity in VIC (mm)          
-         i_0              =>    soilhydrology_vars%i_0_col          , & ! Output: [real(r8) (:)   ]  column average soil moisture in top VIC layers (mm)
-         salinity         =>    col_ws%salinity                       & ! Input:  [real(r8) (:)   ]  salinity (SLL 5/15/20)
+         i_0              =>    soilhydrology_vars%i_0_col            & ! Output: [real(r8) (:)   ]  column average soil moisture in top VIC layers (mm)
          )
 
       ! Get time step
@@ -438,7 +437,7 @@ contains
           icefrac              =>    soilhydrology_vars%icefrac_col          , & ! Output: [real(r8) (:,:) ]  fraction of ice
           h2osoi_vol           =>    waterstate_vars%h2osoi_vol_col          , & ! Input: [real(r8) (:,:) ]  volumetric soil water (0<=h2osoi_vol<=watsat) [m3/m3]
           salinity             =>    col_ws%salinity                         , & ! Input: [real(r8), (:)] ppt
-          zi                   =>    col_pp%zi                                 & ! Input: [real(r8) (:,:) ]  interface level below a "z" level (m)           
+          zi                   =>    col_pp%zi                                 & ! Input: [real(r8) (:,:) ]  interface level below a "z" level (m)
               )
 
        dtime = get_step_size()
