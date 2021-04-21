@@ -593,9 +593,7 @@ contains
                   h2osfc(c) =    h2osfc(c)    +  tide_coeff_amp(ii) * sin(2.0_r8*SHR_CONST_PI*(1/tide_coeff_period(ii)*(days*secspday+seconds) + tide_coeff_phase(ii)))
                 enddo
                 h2osfc(c) = max(h2osfc(c) + tide_baseline, 0.0)
-                qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime
-                !define salinity cycle proportional to tidal cycle -SLL 4/15/20
-                salinity = 30+50*qflx_tide(c) !30 is from 30 ppt salt in seawater -SLL
+                qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime             
 
 #else
              if(h2osfc(c) >= h2osfc_thresh(c) .and. h2osfcflag/=0) then
@@ -712,7 +710,6 @@ contains
                   qflx_lat_aqu(1) = qflx_lat_aqu(1) - min((h2osfc(1)-(h2osfc(2)-humhol_ht*1000.0))*sfcflow_ratescale,h2osfc(1)*0.5/dtime)
                 endif
 #endif
-             endif
 #endif
 
 
