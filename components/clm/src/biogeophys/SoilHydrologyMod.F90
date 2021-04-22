@@ -694,6 +694,7 @@ contains
                      humhol_ht) / humhol_dist * sqrt(hum_frac/hol_frac)
                endif
 <<<<<<< HEAD
+<<<<<<< HEAD
                ! bsulman : Changed to use flexible set of parameters up to full NOAA tidal components (37 coefficients)
                ! Tidal cycle is the sum of all the sinusoidal components
 #ifdef MARSH
