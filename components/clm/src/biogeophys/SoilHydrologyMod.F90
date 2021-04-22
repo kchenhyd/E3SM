@@ -688,8 +688,8 @@ contains
                  qflx_lat_aqu(2) = -2._r8/(1._r8/ka_hu+1._r8/ka_ho) * (zwt_hu-zwt_ho- &
                      humhol_ht) / humhol_dist * sqrt(hum_frac/hol_frac)
                endif
-               salinity = 30+10*qflx_lat_aqu(c) !30 is from 30 ppt salt in seawater -SLL
              endif
+             salinity = 30._r8 + 10._r8 * qflx_lat_aqu(c) !30 is from 30 ppt salt in seawater -SLL
 #endif
 
 
