@@ -536,12 +536,13 @@ contains
            mbb(p) = mbbopt(p)
          end if
 #elseif (defined MARSH) !SLL adding salinity function
-         if (veg_pp%itype(p)=14) then !do I even need this line? -SLL
          osm_inhib(p) = (1-salinity/(KM_salinity(p)+salinity))
-            if (salinity .gt.sal_threshold(p)) then
-               btran(p) = btran(p)*osm_inhib(p) &
-               bbb(p) = bbb(p)*btran(p)
-            end if
+         if (salinity .gt.sal_threshold(p)) then
+            btran(p) = (btran(p)*osm_inhib(p)) &
+            bbb(p) = (bbbopt(p)*btran(p))
+         else
+            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
+            mbb(p) = mbbopt(p)
          end if
 #else
          bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
