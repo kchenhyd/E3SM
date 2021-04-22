@@ -536,13 +536,6 @@ contains
            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
            mbb(p) = mbbopt(p)
          end if
-#elseif (defined MARSH) !SLL adding salinity function
-         for veg_pp%itype(p)
-         osm_inhib(p) = 1-salinity/(KM_salinity(p)+salinity)
-            if salinity .gt.sal_threshold(p) then
-               btran(p) = btran(p)*osm_inhib(p) &
-               bbb(p) = bbb(p)*btran(p)
-            end if
 #else
          bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
          mbb(p) = mbbopt(p)
