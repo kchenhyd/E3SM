@@ -521,6 +521,7 @@ contains
          end if
 
          ! Soil water stress applied to Ball-Berry parameters
+         !SLL adding salinity function
 #if (defined HUM_HOL)
          if (veg_pp%itype(p) == 12) then
              bbb(p) = (-0.195 + 0.134*(h2o_moss_wc(p)+1._r8) - &
@@ -535,7 +536,7 @@ contains
            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
            mbb(p) = mbbopt(p)
          end if
-#elseif (defined MARSH) !SLL adding salinity function
+#elseif (defined MARSH)
          osm_inhib(p) = (1-salinity/(KM_salinity(p)+salinity))
          if (salinity .gt.sal_threshold(p)) then
             btran(p) = (btran(p)*osm_inhib(p)) &
@@ -1973,7 +1974,8 @@ contains
          s_vcmax       => veg_vp%s_vc                          , &
          bsw           => soilstate_inst%bsw_col                , & ! Input:  [real(r8) (:,:) ]  Clapp and Hornberger "b"
          sucsat        => soilstate_inst%sucsat_col             ,  & ! Input:  [real(r8) (:,:) ]  minimum soil suction (mm)
-         ivt           => veg_pp%itype                             & ! Input:  [integer  (:)   ]  patch vegetation type
+         ivt           => veg_pp%itype                          ,  & ! Input:  [integer  (:)   ]  patch vegetation type
+         salinity      => col_ws%salinity                       & !Input: [real(r8) (:)   ]  salinity (SLL 4/27/2021)
       )
       an_sun        =>    photosyns_inst%an_sun_patch         ! Output: [real(r8) (:,:) ]  net sunlit leaf photosynthesis (umol CO2/m**2/s)
       an_sha        =>    photosyns_inst%an_sha_patch         ! Output: [real(r8) (:,:) ]  net shaded leaf photosynthesis (umol CO2/m**2/s)
@@ -2137,8 +2139,9 @@ contains
 
          ! Soil water stress applied to Ball-Berry parameters
 
-#if (defined MARSH) !SLL adding salinity function
-         osm_inhib(p) = (1-salinity/(KM_salinity(p)+salinity))
+         !SLL adding salinity function 
+#if (defined MARSH)
+         osm_inhib(p) = 1-salinity/(KM_salinity(p)+salinity)
          if (salinity .gt.sal_threshold(p)) then
             btran(p) = (btran(p)*osm_inhib(p)) &
             bbb(p) = (bbbopt(p)*btran(p))
@@ -2146,7 +2149,7 @@ contains
             bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
             mbb(p) = mbbopt(p)
          end if
-#elseif
+#else
          bbb(p) = bbbopt(p)
          mbb(p) = mbbopt(p)
 #endif
