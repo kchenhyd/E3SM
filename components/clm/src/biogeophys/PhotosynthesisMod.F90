@@ -26,7 +26,7 @@ module  PhotosynthesisMod
   use SolarAbsorbedType   , only : solarabs_type
   use SurfaceAlbedoType   , only : surfalb_type
   use PhotosynthesisType  , only : photosyns_type
-  use VegetationType           , only : veg_pp
+  use VegetationType      , only : veg_pp
   use AllocationMod     , only : nu_com_leaf_physiology
   use PhosphorusStateType , only : phosphorusstate_type
   use CNNitrogenStateType , only : nitrogenstate_type
@@ -415,7 +415,9 @@ contains
          s_vcmax       => veg_vp%s_vc                          , &
          h2o_moss_wc   => veg_ws%h2o_moss_wc                  , & !Input: [real(r8) (:)   ]  Total Moss water content
          h2osfc        => col_ws%h2osfc                       , & !Input: [real(r8) (:)   ]  Surface water
-         salinity      => col_ws%salinity                       & !Input: [real(r8) (:)   ]  salinity (SLL 4/9/2021)
+         salinity      => col_ws%salinity                     , & !Input: [real(r8) (:)   ]  salinity (SLL 4/9/2021)
+         sal_threshold => veg_vp%sal_threshold                , & !Input: [real(r8) (:)   ] salinity threshold SLL 4/27/21
+         KM_salinity   => veg_vp%KM_salinity                    & !Input: [real(r8) (:)   ] salinity function half saturation constant SLL 4/27/21
          )
       
       if (phase == 'sun') then
@@ -1978,7 +1980,9 @@ contains
          bsw           => soilstate_inst%bsw_col                , & ! Input:  [real(r8) (:,:) ]  Clapp and Hornberger "b"
          sucsat        => soilstate_inst%sucsat_col             ,  & ! Input:  [real(r8) (:,:) ]  minimum soil suction (mm)
          ivt           => veg_pp%itype                          ,  & ! Input:  [integer  (:)   ]  patch vegetation type
-         salinity      => col_ws%salinity                       & !Input: [real(r8) (:)   ]  salinity (SLL 4/27/2021)
+         salinity      => col_ws%salinity                       , & !Input: [real(r8) (:)   ]  salinity (SLL 4/27/2021)
+         sal_threshold => veg_vp%sal_threshold                  , & !Input: [real(r8) (:)   ] salinity threshold SLL 4/27/21
+         KM_salinity   => veg_vp%KM_salinity                      & !Input: [real(r8) (:)   ] salinity function half sat. constant SLL 4/27/21
       )
       an_sun        =>    photosyns_inst%an_sun_patch         ! Output: [real(r8) (:,:) ]  net sunlit leaf photosynthesis (umol CO2/m**2/s)
       an_sha        =>    photosyns_inst%an_sha_patch         ! Output: [real(r8) (:,:) ]  net shaded leaf photosynthesis (umol CO2/m**2/s)
