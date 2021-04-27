@@ -2152,6 +2152,7 @@ contains
             bbb(p) = max (bbbopt(p)*btran(p)*(osm_inhib(veg_pp%itype(p))), 1._r8)
             mbb(p) = mbbopt(p)
          end if
+
 #endif
 
          ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment
@@ -2757,7 +2758,12 @@ contains
             !KO  In this case, bsun and bsha should have the same value and btran 
             !KO  can be set to either bsun or bsha.  But this needs to be checked.
             !btran(p) = bsun(p)
+<<<<<<< HEAD
          !end if
+=======
+         !end if -SLL 4/27/21
+
+>>>>>>> added osm_inhib function to btran in hydraulic stress subroutine, commented out other btran functions
       end do
 
     end associate
