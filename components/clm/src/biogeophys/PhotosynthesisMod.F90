@@ -540,9 +540,9 @@ contains
            mbb(p) = mbbopt(p)
          end if
 #elseif (defined MARSH)
-         osm_inhib(p) = (1-salinity/(KM_salinity(p)+salinity))
-         if (salinity .gt.sal_threshold(p)) then
-            btran(p) = (btran(p)*osm_inhib(p)) &
+         salinity(c) = 30.0_r8
+         if (salinity(c) > sal_threshold(p)) then
+            btran(p) = (btran(p)*(1-salinity(c)/(KM_salinity(p)+salinity(c))))
             bbb(p) = (bbbopt(p)*btran(p))
          else
             bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
@@ -2148,9 +2148,9 @@ contains
 
          !SLL adding salinity function 
 #if (defined MARSH)
-         osm_inhib(p) = 1-salinity/(KM_salinity(p)+salinity)
-         if (salinity .gt.sal_threshold(p)) then
-            btran(p) = (btran(p)*osm_inhib(p)) &
+      salinity(c) = 30.0_r8
+         if (salinity(c) > sal_threshold(p)) then
+            btran(p) = (btran(p)*(1-salinity(c)/(KM_salinity(p)+salinity(c))))
             bbb(p) = (bbbopt(p)*btran(p))
          else
             bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
