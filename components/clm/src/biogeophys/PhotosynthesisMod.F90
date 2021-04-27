@@ -2137,8 +2137,19 @@ contains
 
          ! Soil water stress applied to Ball-Berry parameters
 
+#if (defined MARSH) !SLL adding salinity function
+         osm_inhib(p) = (1-salinity/(KM_salinity(p)+salinity))
+         if (salinity .gt.sal_threshold(p)) then
+            btran(p) = (btran(p)*osm_inhib(p)) &
+            bbb(p) = (bbbopt(p)*btran(p))
+         else
+            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
+            mbb(p) = mbbopt(p)
+         end if
+#elseif
          bbb(p) = bbbopt(p)
          mbb(p) = mbbopt(p)
+#endif
 
          ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment
          ! 24:253-259
@@ -2735,15 +2746,15 @@ contains
          !KO  Here's how I'm combining bsun and bsha to get btran
          !KO  But this is not really an indication of soil moisture stress that can be
          !KO  used for, e.g., irrigation?
-         if ( laican_sha+laican_sun > 0._r8 ) then
-            btran(p) = bsun(p) * (laican_sun / (laican_sun + laican_sha)) + &
-                       bsha(p) * (laican_sha / (laican_sun + laican_sha))         
-         else
+         !if ( laican_sha+laican_sun > 0._r8 ) then
+            !btran(p) = bsun(p) * (laican_sun / (laican_sun + laican_sha)) + &
+                       !bsha(p) * (laican_sha / (laican_sun + laican_sha))         
+         !else
             !KO  Btran has a valid value even if there is no exposed lai (elai=0).  
             !KO  In this case, bsun and bsha should have the same value and btran 
             !KO  can be set to either bsun or bsha.  But this needs to be checked.
-            btran(p) = bsun(p)
-         end if
+            !btran(p) = bsun(p)
+         !end if -SLL 4/27/21
 
       end do
 
