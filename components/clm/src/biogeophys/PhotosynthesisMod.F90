@@ -536,6 +536,18 @@ contains
            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
            mbb(p) = mbbopt(p)
          end if
+<<<<<<< HEAD
+=======
+#elseif (defined MARSH)
+         salinity(c) = 30.0_r8
+         if (salinity(c) > sal_threshold(p)) then
+            btran(p) = (btran(p)*(1-salinity(c)/(KM_salinity(p)+salinity(c))))
+            bbb(p) = (bbbopt(p)*btran(p))
+         else
+            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
+            mbb(p) = mbbopt(p)
+         end if
+>>>>>>> corrected syntax for salinity array
 #else
          bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
          mbb(p) = mbbopt(p)
@@ -2130,11 +2142,6 @@ contains
          end if
 
          ! Soil water stress applied to Ball-Berry parameters
-
-#if (defined MARSH) !SLL adding salinity function
-         osm_inhib(p) = (1-salinity/(KM_salinity(p)+salinity))
-         if (salinity .gt.sal_threshold(p)) then
-            btran(p) = (btran(p)*osm_inhib(p)) &
             bbb(p) = (bbbopt(p)*btran(p))
          else
             bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
