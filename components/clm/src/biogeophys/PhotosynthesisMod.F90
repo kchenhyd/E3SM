@@ -539,9 +539,10 @@ contains
            mbb(p) = mbbopt(p)
          end if
 #elseif (defined MARSH)
+        write(iulog,*), 'btran', btran
          salinity(c) = 30.0_r8
-         if (salinity(c) > sal_threshold(p)) then
-            btran(p) = (btran(p)*(1-salinity(c)/(KM_salinity(p)+salinity(c))))
+         if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
+            btran(p) = (btran(p))*(1-salinity(c)/(KM_salinity(veg_pp%itype(p))+salinity(c))))
             bbb(p) = (bbbopt(p)*btran(p))
          else
             bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
@@ -551,6 +552,7 @@ contains
          bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
          mbb(p) = mbbopt(p)
 #endif
+        write(iulog,*), 'btran', btran
 
          ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment 24:253-259
          !
@@ -2146,8 +2148,8 @@ contains
          !SLL adding salinity function 
 #if (defined MARSH)
       salinity(c) = 30.0_r8
-         if (salinity(c) > sal_threshold(p)) then
-            btran(p) = (btran(p)*(1-salinity(c)/(KM_salinity(p)+salinity(c))))
+         if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
+            btran(p) = (btran(p)*(1-salinity(c)/KM_salinity(veg_pp%itype(p)+salinity(c))))
             bbb(p) = (bbbopt(p)*btran(p))
          else
             bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
