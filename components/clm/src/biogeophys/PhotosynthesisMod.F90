@@ -538,14 +538,15 @@ contains
            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
            mbb(p) = mbbopt(p)
          end if
-
-#elseif (defined MARSH) !SLL adding salinity function
-         for veg_pp%itype(p)
-         osm_inhib(p) = 1-salinity/(KM_salinity(p)+salinity)
-            if salinity .gt.sal_threshold(p) then
-               btran(p) = btran(p)*osm_inhib(p) &
-               bbb(p) = bbb(p)*btran(p)
-            end if
+#elseif (defined MARSH)
+         salinity(c) = 30.0_r8
+         if (salinity(c) > sal_threshold(p)) then
+            btran(p) = (btran(p)*(1-salinity(c)/(KM_salinity(p)+salinity(c))))
+            bbb(p) = (bbbopt(p)*btran(p))
+         else
+            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
+            mbb(p) = mbbopt(p)
+         end if
 #else
          bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
          mbb(p) = mbbopt(p)
@@ -2144,12 +2145,18 @@ contains
          end if
 
          ! Soil water stress applied to Ball-Berry parameters
+<<<<<<< HEAD
 
 #if (defined MARSH)
          !SLL add osm_inhib function here
          if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
          osm_inhib(veg_pp%itype(p)) = (1-salinity(c)/(KM_salinity(veg_pp%itype(p))+salinity(c)))
             bbb(p) = max (bbbopt(p)*btran(p)*(osm_inhib(veg_pp%itype(p))), 1._r8)
+=======
+            bbb(p) = (bbbopt(p)*btran(p))
+         else
+            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
+>>>>>>> corrected syntax for salinity array
             mbb(p) = mbbopt(p)
          end if
 
