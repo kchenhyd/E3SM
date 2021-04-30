@@ -414,8 +414,12 @@ contains
          i_vcmax       => veg_vp%i_vc                          , &
          s_vcmax       => veg_vp%s_vc                          , &
          h2o_moss_wc   => veg_ws%h2o_moss_wc                  , & !Input: [real(r8) (:)   ]  Total Moss water content
+<<<<<<< HEAD
          h2osfc        => col_ws%h2osfc                       , & !Input: [real(r8) (:)   ]  Surface water
          salinity      => col_ws%salinity                       & !Input: [real(r8) (:)   ]  salinity (SLL 4/9/2021)
+=======
+         h2osfc        => col_ws%h2osfc                         & !Input: [real(r8) (:)   ]  Surface water
+>>>>>>> move btran function out of PhotosynthesisMod into CanopyFluxesMod
          )
       
       if (phase == 'sun') then
@@ -537,6 +541,7 @@ contains
            mbb(p) = mbbopt(p)
          end if
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 #elseif (defined MARSH)
          salinity(c) = 30.0_r8
@@ -548,6 +553,8 @@ contains
             mbb(p) = mbbopt(p)
          end if
 >>>>>>> corrected syntax for salinity array
+=======
+>>>>>>> move btran function out of PhotosynthesisMod into CanopyFluxesMod
 #else
          bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
          mbb(p) = mbbopt(p)
@@ -826,7 +833,7 @@ contains
             ! Adjust for soil water
 
             vcmax_z(p,iv) = vcmax_z(p,iv) * btran(p)
-            lmr_z(p,iv) = lmr_z(p,iv) * btran(p) !will this carry over from the earlier if marsh statement? -SLL 4-8-21
+            lmr_z(p,iv) = lmr_z(p,iv) * btran(p) !will this carry over from the earlier if marsh statement?
 
             ! output variable
             vcmax25_top(p) = vcmax25top
@@ -1979,7 +1986,12 @@ contains
          s_vcmax       => veg_vp%s_vc                          , &
          bsw           => soilstate_inst%bsw_col                , & ! Input:  [real(r8) (:,:) ]  Clapp and Hornberger "b"
          sucsat        => soilstate_inst%sucsat_col             ,  & ! Input:  [real(r8) (:,:) ]  minimum soil suction (mm)
+<<<<<<< HEAD
          ivt           => veg_pp%itype                             & ! Input:  [integer  (:)   ]  patch vegetation type
+=======
+         ivt           => veg_pp%itype                            & ! Input:  [integer  (:)   ]  patch vegetation type
+
+>>>>>>> move btran function out of PhotosynthesisMod into CanopyFluxesMod
       )
       an_sun        =>    photosyns_inst%an_sun_patch         ! Output: [real(r8) (:,:) ]  net sunlit leaf photosynthesis (umol CO2/m**2/s)
       an_sha        =>    photosyns_inst%an_sha_patch         ! Output: [real(r8) (:,:) ]  net shaded leaf photosynthesis (umol CO2/m**2/s)
@@ -2755,8 +2767,7 @@ contains
             !KO  In this case, bsun and bsha should have the same value and btran 
             !KO  can be set to either bsun or bsha.  But this needs to be checked.
             !btran(p) = bsun(p)
-         !end if -SLL 4/27/21
-
+         !end if
       end do
 
     end associate
