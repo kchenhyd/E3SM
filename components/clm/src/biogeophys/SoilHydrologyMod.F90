@@ -689,7 +689,7 @@ contains
                      humhol_ht) / humhol_dist * sqrt(hum_frac/hol_frac)
                endif
              endif
-             salinity = 30._r8 !30 is from 30 ppt salt in seawater -SLL
+             salinity(c) = 30._r8 + 10*qflx_lat_aqu(c) !30 is from 30 ppt salt in seawater -SLL
 #endif
 
 

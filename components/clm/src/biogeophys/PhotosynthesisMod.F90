@@ -413,10 +413,7 @@ contains
          i_vcmax       => veg_vp%i_vc                          , &
          s_vcmax       => veg_vp%s_vc                          , &
          h2o_moss_wc   => veg_ws%h2o_moss_wc                  , & !Input: [real(r8) (:)   ]  Total Moss water content
-         h2osfc        => col_ws%h2osfc                       , & !Input: [real(r8) (:)   ]  Surface water
-         salinity      => col_ws%salinity                     , & !Input: [real(r8) (:)   ]  salinity (SLL 4/9/2021)
-         sal_threshold => veg_vp%sal_threshold                , & !Input: [real(r8) (:)   ] salinity threshold SLL 4/27/21
-         KM_salinity   => veg_vp%KM_salinity                    & !Input: [real(r8) (:)   ] salinity function half saturation constant SLL 4/27/21
+         h2osfc        => col_ws%h2osfc                         & !Input: [real(r8) (:)   ]  Surface water
          )
       
       if (phase == 'sun') then
@@ -523,7 +520,6 @@ contains
          end if
 
          ! Soil water stress applied to Ball-Berry parameters
-         !SLL adding salinity function
 #if (defined HUM_HOL)
          if (veg_pp%itype(p) == 12) then
              bbb(p) = (-0.195 + 0.134*(h2o_moss_wc(p)+1._r8) - &
@@ -538,21 +534,10 @@ contains
            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
            mbb(p) = mbbopt(p)
          end if
-#elseif (defined MARSH)
-        write(iulog,*), 'btran', btran
-         salinity(c) = 30.0_r8
-         if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
-            btran(p) = (btran(p))*(1-salinity(c)/(KM_salinity(veg_pp%itype(p))+salinity(c))))
-            bbb(p) = (bbbopt(p)*btran(p))
-         else
-            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
-            mbb(p) = mbbopt(p)
-         end if
 #else
          bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
          mbb(p) = mbbopt(p)
 #endif
-        write(iulog,*), 'btran', btran
 
          ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment 24:253-259
          !
@@ -827,7 +812,7 @@ contains
             ! Adjust for soil water
 
             vcmax_z(p,iv) = vcmax_z(p,iv) * btran(p)
-            lmr_z(p,iv) = lmr_z(p,iv) * btran(p) !will this carry over from the earlier if marsh statement? -SLL 4-8-21
+            lmr_z(p,iv) = lmr_z(p,iv) * btran(p) !will this carry over from the earlier if marsh statement?
 
          end do       ! canopy layer loop
       end do          ! patch loop
@@ -1978,10 +1963,8 @@ contains
          s_vcmax       => veg_vp%s_vc                          , &
          bsw           => soilstate_inst%bsw_col                , & ! Input:  [real(r8) (:,:) ]  Clapp and Hornberger "b"
          sucsat        => soilstate_inst%sucsat_col             ,  & ! Input:  [real(r8) (:,:) ]  minimum soil suction (mm)
-         ivt           => veg_pp%itype                          ,  & ! Input:  [integer  (:)   ]  patch vegetation type
-         salinity      => col_ws%salinity                       , & !Input: [real(r8) (:)   ]  salinity (SLL 4/27/2021)
-         sal_threshold => veg_vp%sal_threshold                  , & !Input: [real(r8) (:)   ] salinity threshold SLL 4/27/21
-         KM_salinity   => veg_vp%KM_salinity                      & !Input: [real(r8) (:)   ] salinity function half sat. constant SLL 4/27/21
+         ivt           => veg_pp%itype                            & ! Input:  [integer  (:)   ]  patch vegetation type
+
       )
       an_sun        =>    photosyns_inst%an_sun_patch         ! Output: [real(r8) (:,:) ]  net sunlit leaf photosynthesis (umol CO2/m**2/s)
       an_sha        =>    photosyns_inst%an_sha_patch         ! Output: [real(r8) (:,:) ]  net shaded leaf photosynthesis (umol CO2/m**2/s)
@@ -2145,16 +2128,8 @@ contains
 
          ! Soil water stress applied to Ball-Berry parameters
 
-         !SLL adding salinity function 
 #if (defined MARSH)
-      salinity(c) = 30.0_r8
-         if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
-            btran(p) = (btran(p)*(1-salinity(c)/KM_salinity(veg_pp%itype(p)+salinity(c))))
             bbb(p) = (bbbopt(p)*btran(p))
-         else
-            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
-            mbb(p) = mbbopt(p)
-         end if
 #else
          bbb(p) = bbbopt(p)
          mbb(p) = mbbopt(p)
@@ -2763,8 +2738,7 @@ contains
             !KO  In this case, bsun and bsha should have the same value and btran 
             !KO  can be set to either bsun or bsha.  But this needs to be checked.
             !btran(p) = bsun(p)
-         !end if -SLL 4/27/21
-
+         !end if
       end do
 
     end associate
