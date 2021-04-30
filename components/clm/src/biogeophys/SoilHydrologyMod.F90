@@ -693,8 +693,6 @@ contains
                  qflx_lat_aqu(2) = -2._r8/(1._r8/ka_hu+1._r8/ka_ho) * (zwt_hu-zwt_ho- &
                      humhol_ht) / humhol_dist * sqrt(hum_frac/hol_frac)
                endif
-<<<<<<< HEAD
-<<<<<<< HEAD
                ! bsulman : Changed to use flexible set of parameters up to full NOAA tidal components (37 coefficients)
                ! Tidal cycle is the sum of all the sinusoidal components
 #ifdef MARSH
