@@ -279,9 +279,10 @@ module pftvarcon
   real(r8),allocatable  :: tide_coeff_amp(:)            ! Amplitude of tide component (mm)
   real(r8),allocatable  :: tide_coeff_period(:)        ! Period of tide component (s)
   real(r8),allocatable  :: tide_coeff_phase(:)         ! Phase shift of tide component (s)
- ! parameters for salinity response function
+ ! parameters for salinity response function -SLL
   real(r8), allocatable :: sal_threshold(:) !threshold for salinity effects (ppt)
-  real(r8), allocatable :: KM_salinity(:)          !half saturation constant for omotic inhibition function (ppt)
+  real(r8), allocatable :: KM_salinity(:)    !half saturation constant for omotic inhibition function (ppt)
+  real(r8), allocatable :: osm_inhib(:)      !osmotic inhibition factor
 !endif
   !phenology
   real(r8)              :: phen_a
@@ -574,6 +575,7 @@ contains
     ! salinity parameters
     allocate( sal_threshold (0:mxpft) )
     allocate( KM_salinity (0:mxpft) )
+    allocate( osm_inhib (0:mxpft) )
 
     ! Set specific vegetation type values
 
@@ -953,6 +955,8 @@ contains
       if ( .not. readv ) sal_threshold(:) = 1.8_r8 !placeholder value for now-update with more accurate -SLL
       call ncd_io('KM_salinity', KM_salinity(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
       if ( .not. readv ) KM_salinity(:) = 1.8_r8 !placeholder value for now-update with more accurate -SLL
+      call ncd_io('osm_inhib', osm_inhib(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+      if ( .not. readv ) osm_inhib(:) = 1.8_r8 
    enddo
    if(num_tide_comps == 0) then
       write(iulog,*) "No tidal coefficients found in parameter file. Using Teri's 2-component fit values for GCREW site as default"
