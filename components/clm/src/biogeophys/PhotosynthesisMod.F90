@@ -413,6 +413,7 @@ contains
          leafp_xfer    => veg_ps%leafp_xfer    , &
          i_vcmax       => veg_vp%i_vc                          , &
          s_vcmax       => veg_vp%s_vc                          , &
+<<<<<<< HEAD
          h2o_moss_wc   => veg_ws%h2o_moss_wc                  , & !Input: [real(r8) (:)   ]  Total Moss water content
 <<<<<<< HEAD
          h2osfc        => col_ws%h2osfc                       , & !Input: [real(r8) (:)   ]  Surface water
@@ -420,6 +421,14 @@ contains
 =======
          h2osfc        => col_ws%h2osfc                         & !Input: [real(r8) (:)   ]  Surface water
 >>>>>>> move btran function out of PhotosynthesisMod into CanopyFluxesMod
+=======
+         h2o_moss_wc   => veg_ws%h2o_moss_wc                   , & !Input: [real(r8) (:)   ]  Total Moss water content
+         h2osfc        => col_ws%h2osfc                        , & !Input: [real(r8) (:)   ]  Surface water
+         salinity      => col_ws%salinity                      , & !Input: [real(r8) (:)   ] Salinity concentration ppt
+         sal_threshold => veg_vp%sal_threshold                 , & !Input: [real(r8) (:)   ] Threshold salinity concentration to trigger osmotic inhibition (ppt)
+         KM_salinity   => veg_vp%KM_salinity                   , & !Input: [real(r8) (:)   ] half saturation constant for osmotic inhibition function
+         osm_inhib     => veg_vp%osm_inhib                       & !Input: [real(r8) (:)   ] osmotic inhibition factor
+>>>>>>> Added osm_inhib as a variable. Removed salinity function in CanopyFluxes bc it broke carbon balance, moved function to Photosynthesis and multiplied btran by osm_inhib each time bbb was defined.
          )
       
       if (phase == 'sun') then
@@ -542,6 +551,7 @@ contains
          end if
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 #elseif (defined MARSH)
          salinity(c) = 30.0_r8
@@ -557,6 +567,14 @@ contains
 >>>>>>> move btran function out of PhotosynthesisMod into CanopyFluxesMod
 #else
          bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
+=======
+#else if (defined MARSH)
+         !SLL add osm_inhib function here
+            if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
+               osm_inhib(p) = (1-salinity(c)/KM_salinity(veg_pp%itype(p)+salinity(c)))
+            end if
+         bbb(p) = max (bbbopt(p)*btran(p)*osm_inhib(p), 1._r8)
+>>>>>>> Added osm_inhib as a variable. Removed salinity function in CanopyFluxes bc it broke carbon balance, moved function to Photosynthesis and multiplied btran by osm_inhib each time bbb was defined.
          mbb(p) = mbbopt(p)
 #endif
 
