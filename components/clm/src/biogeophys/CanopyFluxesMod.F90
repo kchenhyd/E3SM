@@ -445,10 +445,7 @@ contains
          eflx_sh_soil         => veg_ef%eflx_sh_soil        , & ! Output: [real(r8) (:)   ]  sensible heat flux from soil (W/m**2) [+ to atm]                      
          eflx_sh_veg          => veg_ef%eflx_sh_veg         , & ! Output: [real(r8) (:)   ]  sensible heat flux from leaves (W/m**2) [+ to atm]                    
          eflx_sh_grnd         => veg_ef%eflx_sh_grnd        , & ! Output: [real(r8) (:)   ]  sensible heat flux from ground (W/m**2) [+ to atm]
-         leafn                => veg_ns%leafn               , &
-         salinity             => col_ws%salinity            , & ! Input:  [real(r8) (:)   ]  salinity (SLL 4/27/21)    
-         sal_threshold        => veg_vp%sal_threshold       , & ! Input:  [real(r8) (:)   ]  salinity threshold (SLL 4/27/21)
-         KM_salinity          => veg_vp%KM_salinity         , & ! Input:  [real(r8) (:)   ]  salinity half saturation constant (SLL 4/27/21) 
+         leafn                => veg_ns%leafn                &
 
          begp                 => bounds%begp                               , &
          endp                 => bounds%endp                                 &
@@ -596,11 +593,7 @@ contains
               temperature_vars=temperature_vars, &
               waterstate_vars=waterstate_vars,   &
               soil_water_retention_curve=soil_water_retention_curve)
-         
-         !SLL add osm_inhib function here
-            if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
-               btran(p) = (btran(p)*(1-salinity(c)/KM_salinity(veg_pp%itype(p)+salinity(c))))
-            end if
+      
       
       end if !use_fates
 
