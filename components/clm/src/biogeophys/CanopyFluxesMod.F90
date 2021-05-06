@@ -445,8 +445,7 @@ contains
          eflx_sh_soil         => veg_ef%eflx_sh_soil        , & ! Output: [real(r8) (:)   ]  sensible heat flux from soil (W/m**2) [+ to atm]                      
          eflx_sh_veg          => veg_ef%eflx_sh_veg         , & ! Output: [real(r8) (:)   ]  sensible heat flux from leaves (W/m**2) [+ to atm]                    
          eflx_sh_grnd         => veg_ef%eflx_sh_grnd        , & ! Output: [real(r8) (:)   ]  sensible heat flux from ground (W/m**2) [+ to atm]
-         leafn                => veg_ns%leafn                &
-
+         leafn                => veg_ns%leafn               ,&
          begp                 => bounds%begp                               , &
          endp                 => bounds%endp                                 &
          )
