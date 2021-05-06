@@ -395,6 +395,7 @@ contains
           h2osno               =>    col_ws%h2osno              , & ! Input:  [real(r8) (:)   ]  snow water (mm H2O)                               
           snow_depth           =>    col_ws%snow_depth          , & ! Input:  [real(r8) (:)   ]  snow height (m)                                   
           h2osfc               =>    col_ws%h2osfc              , & ! Output: [real(r8) (:)   ]  surface water (mm)                                
+          salinity             =>    col_ws%salinity            , & ! Input:  [real(r8) (:)   ] salinity concentration (ppt)
 
           qflx_ev_soil         =>    col_wf%qflx_ev_soil         , & ! Input:  [real(r8) (:)   ]  evaporation flux from soil (W/m**2) [+ to atm]    
           qflx_evap_soi        =>    col_wf%qflx_evap_soi        , & ! Input:  [real(r8) (:)   ]  ground surface evaporation rate (mm H2O/s) [+]    
@@ -433,8 +434,7 @@ contains
           h2osfcflag           =>    soilhydrology_vars%h2osfcflag           , & ! Input:  logical
           icefrac              =>    soilhydrology_vars%icefrac_col          , & ! Output: [real(r8) (:,:) ]  fraction of ice
           h2osoi_vol           =>    waterstate_vars%h2osoi_vol_col          , & ! Input: [real(r8) (:,:) ]  volumetric soil water (0<=h2osoi_vol<=watsat) [m3/m3]
-          zi                   =>    col_pp%zi                               , & ! Input: [real(r8) (:,:) ]  interface level below a "z" level (m)           
-         salinity              =>    col_ws%salinity                           & ! Input:  [real(r8) (:)   ]  salinity (SLL 5/15/20)          
+          zi                   =>    col_pp%zi                                 & ! Input: [real(r8) (:,:) ]  interface level below a "z" level (m)           
               )
 
        dtime = get_step_size()
@@ -593,7 +593,7 @@ contains
                   h2osfc(c) =    h2osfc(c)    +  tide_coeff_amp(ii) * sin(2.0_r8*SHR_CONST_PI*(1/tide_coeff_period(ii)*(days*secspday+seconds) + tide_coeff_phase(ii)))
                 enddo
                 h2osfc(c) = max(h2osfc(c) + tide_baseline, 0.0)
-                qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime             
+                qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime
 
 #else
              if(h2osfc(c) >= h2osfc_thresh(c) .and. h2osfcflag/=0) then
@@ -687,9 +687,9 @@ contains
                      humhol_ht) / humhol_dist * sqrt(hol_frac/hum_frac)
                  qflx_lat_aqu(2) = -2._r8/(1._r8/ka_hu+1._r8/ka_ho) * (zwt_hu-zwt_ho- &
                      humhol_ht) / humhol_dist * sqrt(hum_frac/hol_frac)
+                 salinity(2) = 20._r8 + 50_r8*qflx_lat_aqu(1)*dtime
                endif
              endif
-             salinity(c) = 30._r8 + 10*qflx_lat_aqu(c) !30 is from 30 ppt salt in seawater -SLL
 #endif
 
 
