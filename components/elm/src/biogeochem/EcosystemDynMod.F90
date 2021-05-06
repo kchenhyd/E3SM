@@ -572,7 +572,6 @@ contains
      call t_stopf('bgc via alquimia interface')
 
     elseif( .not.use_elm_interface) then
-       call t_startf('SoilLittDecompAlloc')
        call SoilLittDecompAlloc (bounds, num_soilc, filter_soilc,    &
                   num_soilp, filter_soilp,                     &
                   canopystate_vars, soilstate_vars,            &
