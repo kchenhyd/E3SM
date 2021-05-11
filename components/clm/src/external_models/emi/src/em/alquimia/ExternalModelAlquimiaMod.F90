@@ -57,6 +57,7 @@ module ExternalModelAlquimiaMod
     integer :: index_l2e_soil_pool_decomp_k
     integer :: index_l2e_state_nh4
     integer :: index_l2e_state_no3
+    integer :: index_l2e_flux_plantNdemand
     
     ! Solve data returned to land model
     integer :: index_e2l_state_decomp_cpools
@@ -68,6 +69,9 @@ module ExternalModelAlquimiaMod
     integer :: index_e2l_flux_Nimm
     integer :: index_e2l_flux_Nimp
     integer :: index_e2l_flux_Nmin
+
+    integer :: index_e2l_flux_plantNO3uptake
+    integer :: index_e2l_flux_plantNH4uptake
     
 #ifdef USE_ALQUIMIA_LIB
     ! Chemistry engine: Should be one per thread
@@ -100,6 +104,8 @@ module ExternalModelAlquimiaMod
     integer                              :: CO2_pool_number
     integer                              :: NH4_pool_number,NO3_pool_number
     integer                              :: Nimm_pool_number,Nmin_pool_number,Nimp_pool_number
+    integer                              :: plantNO3uptake_pool_number,plantNH4uptake_pool_number
+    integer                              :: plantNH4uptake_reaction_number,plantNO3uptake_reaction_number
     
    contains
      procedure, public :: Populate_L2E_Init_List  => EMAlquimia_Populate_L2E_Init_List
@@ -258,6 +264,10 @@ contains
     call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_l2e_state_no3              = index
 
+    id                                             = L2E_FLUX_PLANT_NDEMAND_VERTICALLY_RESOLVED
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_flux_plantNdemand              = index
+
 
     deallocate(em_stages)
     
@@ -326,6 +336,14 @@ contains
     call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_e2l_flux_Nmin              = index
 
+    id                                             = E2L_FLUX_SMIN_NO3_TO_PLANT_VERTICALLY_RESOLVED
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_flux_plantNO3uptake      = index
+
+    id                                             = E2L_FLUX_SMIN_NH4_TO_PLANT_VERTICALLY_RESOLVED
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_flux_plantNH4uptake      = index
+
     deallocate(em_stages)
 
     write(iulog,*)'E2L List:'
@@ -358,7 +376,7 @@ contains
     use landunit_varcon, only : istcrop,istsoil
     use clm_varctl, only : alquimia_inputfile,alquimia_engine_name,alquimia_IC_name,alquimia_CO2_name,&
                            alquimia_NO3_name,alquimia_NH4_name,alquimia_Nimp_name,alquimia_Nmin_name,alquimia_Nimm_name,&
-                           alquimia_handsoff
+                           alquimia_handsoff,alquimia_plantNO3uptake_name,alquimia_plantNH4uptake_name
     use CNDecompCascadeConType, only : decomp_cascade_con
     
     use PFloTranAlquimiaInterface_module, only : PrintSizes,PrintProblemMetaData, ProcessCondition,PrintState
@@ -528,6 +546,22 @@ contains
     endif
     this%Nmin_pool_number = pool_num
 
+    pool_num = find_alquimia_pool(alquimia_plantNH4uptake_name,name_list,this%chem_sizes%num_primary)
+    if (pool_num>0) then
+      write(iulog,'(a,6x,a,i3,1x,a)'),'Plant NH4 uptake', '<-> Alquimia pool',pool_num,trim(alquimia_plantNH4uptake_name)
+    else
+      write(iulog,'(a,i3,1X,a)'),'WARNING: No match for pool',ii,trim(alquimia_plantNH4uptake_name)
+    endif
+    this%plantNH4uptake_pool_number = pool_num
+
+    pool_num = find_alquimia_pool(alquimia_plantNO3uptake_name,name_list,this%chem_sizes%num_primary)
+    if (pool_num>0) then
+      write(iulog,'(a,6x,a,i3,1x,a)'),'Plant NO3 uptake', '<-> Alquimia pool',pool_num,trim(alquimia_plantNO3uptake_name)
+    else
+      write(iulog,'(a,i3,1X,a)'),'WARNING: No match for pool',ii,trim(alquimia_plantNO3uptake_name)
+    endif
+    this%plantNO3uptake_pool_number = pool_num
+
     ! Need to map out reactions as well
     allocate(this%pool_reaction_mapping(ndecomp_pools))
     call c_f_pointer(this%chem_metadata%aqueous_kinetic_names%data, name_list, (/this%chem_metadata%aqueous_kinetic_names%size/))
@@ -545,6 +579,8 @@ contains
       else
         receiver_poolname = 'CO2'
       endif
+      ! This depends on a particular PFLOTRAN/alquimia naming convention and so is not very flexible
+      ! Would it be better to provide full names as inputs in varctl or something?
       alq_poolname = trim(donor_poolname)//' decay to '// trim(receiver_poolname)//' (SOMDEC sandbox)'
       pool_num = find_alquimia_pool(alq_poolname,name_list,this%chem_metadata%aqueous_kinetic_names%size)
       if(pool_num>0) then 
@@ -555,6 +591,24 @@ contains
       ! Here the index of the mapping needs to be the index of the donor pool, not the index of the transition
       this%pool_reaction_mapping(decomp_cascade_con%cascade_donor_pool(ii))=pool_num
     enddo
+
+    ! Find plant NO3 and NH4 uptake reactions to rate constants can be set
+    ! This is trickier for Microbial reactions because they are named by stoichiometry and representation depends on precision in input deck
+    alq_poolname = '1.0000e+00 NH4+  -> 1.0000e+00 Tracer2' ! Todo: Fix this! !
+    this%plantNH4uptake_reaction_number = find_alquimia_pool(alq_poolname,name_list,this%chem_metadata%aqueous_kinetic_names%size)
+    if(this%plantNH4uptake_reaction_number>0) then 
+      write(iulog,'(a, i3, 1X, a)'),'ELM plant NH4+ uptake <-> Alquimia reaction',this%plantNH4uptake_reaction_number,trim(alq_poolname)
+    else
+      write(iulog,'(a,1x,a)'),'WARNING: No match for plant NH4+ uptake reaction',trim(alq_poolname)
+    endif
+    alq_poolname = '1.0000e+00 NO3-  -> 1.0000e+00 Tracer' ! Todo: Fix this! !
+    this%plantNO3uptake_reaction_number = find_alquimia_pool(alq_poolname,name_list,this%chem_metadata%aqueous_kinetic_names%size)
+    if(this%plantNO3uptake_reaction_number>0) then 
+      write(iulog,'(a, i3, 1X, a)'),'ELM plant NO3- uptake <-> Alquimia reaction',this%plantNO3uptake_reaction_number,trim(alq_poolname)
+    else
+      write(iulog,'(a,1x,a)'),'WARNING: No match for plant NO3- uptake reaction',trim(alq_poolname)
+    endif
+
     ! Todo: Keep track of other (non-SOMDEC) reactions too somehow
     
     ! Initial condition. The zero length for constraints suggest that it will be read in from input file?
@@ -666,6 +720,7 @@ contains
     real(r8) , pointer, dimension(:,:)    :: hr_e2l , temperature, h2o_liq, h2o_ice
     real(r8) , pointer, dimension(:,:)  :: no3_e2l,no3_l2e,nh4_e2l,nh4_l2e
     real(r8) , pointer, dimension(:,:)  :: Nimm_e2l, Nimp_e2l, Nmin_e2l
+    real(r8) , pointer, dimension(:,:)  :: plantNO3uptake_e2l,plantNH4uptake_e2l, plantNdemand_l2e
     real(r8) :: CO2_before
     real(r8), parameter                 :: minval = 1.e-30_r8 ! Minimum value to pass to PFLOTRAN to avoid numerical errors with concentrations of 0
     
@@ -702,6 +757,8 @@ contains
     ! Pool turnover rate constants calculated in ELM, incorporating T and moisture effects (1/s)
     call l2e_list%GetPointerToReal3D(this%index_l2e_soil_pool_decomp_k, decomp_k)
 
+    call l2e_list%GetPointerToReal2D(this%index_l2e_flux_plantNdemand, plantNdemand_l2e)
+
     ! C and N pools
     call e2l_list%GetPointerToReal3D(this%index_e2l_state_decomp_cpools , soilcarbon_e2l) ! gC/m2
     call e2l_list%GetPointerToReal3D(this%index_e2l_state_decomp_npools , soilnitrogen_e2l) ! gN/m2
@@ -713,6 +770,9 @@ contains
     call e2l_list%GetPointerToReal2D(this%index_e2l_flux_Nimm , Nimm_e2l) ! gN/m3/s
     call e2l_list%GetPointerToReal2D(this%index_e2l_flux_Nimp , Nimp_e2l) ! gN/m3/s
     call e2l_list%GetPointerToReal2D(this%index_e2l_flux_Nmin , Nmin_e2l) ! gN/m3/s
+
+    call e2l_list%GetPointerToReal2D(this%index_e2l_flux_plantNO3uptake , plantNO3uptake_e2l) ! gN/m3/s
+    call e2l_list%GetPointerToReal2D(this%index_e2l_flux_plantNH4uptake , plantNH4uptake_e2l) ! gN/m3/s
 
     
      ! Run the reactions engine for a step. Alquimia works on one cell at a time
@@ -765,14 +825,35 @@ contains
              if(this%NO3_pool_number>0) alquimia_mobile_data(this%NO3_pool_number) = max(no3_l2e(c,j)/natomw/(1000.0*this%chem_state(c,j)%porosity),minval)
              if(this%NH4_pool_number>0) alquimia_mobile_data(this%NH4_pool_number) = max(nh4_l2e(c,j)/natomw/(1000.0*this%chem_state(c,j)%porosity),minval)
 
+             ! Set rate constant based on plant N demand. Convert from gN/m3/s to mol/L/s
+             ! Also scale rates by relative concentrations of NO3 and NH4 so total uptake doesn't exceed demand
+            if(this%plantNH4uptake_reaction_number>0) then
+              alquimia_rates_data(this%plantNH4uptake_reaction_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*this%chem_state(c,j)%porosity)
+              if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
+                  alquimia_rates_data(this%plantNH4uptake_reaction_number) = alquimia_rates_data(this%plantNH4uptake_reaction_number)*nh4_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
+            endif
+            if(this%plantNO3uptake_reaction_number>0) then
+              alquimia_rates_data(this%plantNO3uptake_reaction_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*this%chem_state(c,j)%porosity)
+              if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
+                alquimia_rates_data(this%plantNO3uptake_reaction_number) = alquimia_rates_data(this%plantNO3uptake_reaction_number)*no3_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
+            endif
+
+           
             ! Reset diagnostic N immobilization, mineralization
              if(this%Nimm_pool_number>0) alquimia_immobile_data(this%Nimm_pool_number) = minval
              if(this%Nimp_pool_number>0) alquimia_immobile_data(this%Nimp_pool_number) = minval
              if(this%Nmin_pool_number>0) alquimia_immobile_data(this%Nmin_pool_number) = minval
 
+             if(this%plantNO3uptake_pool_number>0) alquimia_immobile_data(this%plantNO3uptake_pool_number) = minval
+             if(this%plantNO3uptake_pool_number>0) alquimia_mobile_data(this%plantNO3uptake_pool_number) = minval
+             if(this%plantNH4uptake_pool_number>0) alquimia_immobile_data(this%plantNH4uptake_pool_number) = minval
+             if(this%plantNH4uptake_pool_number>0) alquimia_mobile_data(this%plantNH4uptake_pool_number) = minval
+
+
               call run_onestep(this, c,j, dt,0,max_cuts)
               if(max_cuts>3) write(iulog,'(a,i2,a,2i3)'),"Alquimia converged after",max_cuts,"cuts",c,j
-             
+
+
               ! Set updated land model values
               ! Convert from mol/m3 to gC/m2
               do poolnum=1,ndecomp_pools
@@ -807,13 +888,26 @@ contains
               ! Nmin will be added to the NH4 pool elsewhere in ELM so skip that for now
               ! if(this%Nmin_pool_number>0) Nmin_e2l(c,j) = alquimia_immobile_data(this%Nmin_pool_number)*natomw/dt
 
-              if(abs(sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j)-(sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)))*this%chem_properties(c,j)%volume>1e-9) then
-                write(iulog,*),j,sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j),sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j),sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j)-(sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j))
-                write(iulog,*),'dz = ',this%chem_properties(c,j)%volume
-                write(iulog,*),sum(soilnitrogen_e2l(c,j,:)-soilnitrogen_l2e(c,j,:)),sum(soilnitrogen_e2l(c,j,:))
-                write(iulog,*),no3_e2l(c,j)-no3_l2e(c,j),nh4_e2l(c,j)-nh4_l2e(c,j)
-                write(iulog,*),no3_e2l(c,j),nh4_e2l(c,j)
-                write(iulog,*),'decomp_k =',decomp_k(c,j,:)
+              ! PFLOTRAN may use an aqueous tracer to model plant N uptake if defining using Microbial reaction
+              if(this%plantNO3uptake_pool_number>0) plantNO3uptake_e2l(c,j) = (alquimia_immobile_data(this%plantNO3uptake_pool_number)-minval)*natomw/dt + &
+                                                (alquimia_mobile_data(this%plantNO3uptake_pool_number)-minval)*natomw*(1000.0*this%chem_state(c,j)%porosity)/dt
+                if(this%plantNH4uptake_pool_number>0) plantNH4uptake_e2l(c,j) = (alquimia_immobile_data(this%plantNH4uptake_pool_number)-minval)*natomw/dt + &
+                                                (alquimia_mobile_data(this%plantNH4uptake_pool_number)-minval)*natomw*(1000.0*this%chem_state(c,j)%porosity)/dt
+
+
+
+              ! Todo: Clean this up and add C check
+              if(abs(sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j)-&
+                        (sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)+plantNO3uptake_e2l(c,j)*dt+plantNH4uptake_e2l(c,j)*dt))>1e-9) then
+                write(iulog,'(a,1x,i3,a,i3)'),'Nitrogen imbalance after alquimia solve step in layer',j,' Column ',c,__FILE__,__LINE__
+                write(iulog,'(a25,3e20.8)'),'Total N: ', sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j),&
+                                            sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)+plantNH4uptake_e2l(c,j)*dt+plantNO3uptake_e2l(c,j)*dt,&
+                                            sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)+plantNO3uptake_e2l(c,j)*dt+plantNH4uptake_e2l(c,j)*dt-(sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j))
+                write(iulog,'(a25,3e20.8)'),'SON pools: ' ,sum(soilnitrogen_l2e(c,j,:)),sum(soilnitrogen_e2l(c,j,:)),sum(soilnitrogen_e2l(c,j,:)-soilnitrogen_l2e(c,j,:))
+                write(iulog,'(a25,3e20.8)'),'NO3: ',no3_l2e(c,j),no3_e2l(c,j),no3_e2l(c,j)-no3_l2e(c,j)
+                write(iulog,'(a25,3e20.8)'),'NH4: ',nh4_l2e(c,j),nh4_e2l(c,j),nh4_e2l(c,j)-nh4_l2e(c,j)
+                write(iulog,'(a25,3e20.8)'),'Plant NO3, NH4 uptake: ',plantNO3uptake_e2l(c,j)*dt,plantNH4uptake_e2l(c,j)*dt,plantNO3uptake_e2l(c,j)*dt+plantNH4uptake_e2l(c,j)*dt
+                call endrun(msg='N imbalance after alquimia solve')
               endif
         enddo
      enddo

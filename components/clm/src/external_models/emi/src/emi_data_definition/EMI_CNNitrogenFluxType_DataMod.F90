@@ -93,6 +93,19 @@ contains
        dim2_end_name  =  dimname_nlevdecomp_full
        data_found   =  .true.
 
+    case(L2E_FLUX_PLANT_NDEMAND_VERTICALLY_RESOLVED)
+       id_val         =  L2E_FLUX_PLANT_NDEMAND_VERTICALLY_RESOLVED
+       name_val       =  'plant ndemand vr'
+       long_name_val  =  'plant ndemand vr: ELM to EM'
+       units_val      =  '[gN/m3/s]'
+       is_real_type   =  .true.
+       ndim           =  2
+       dim1_beg_name  =  dimname_begc
+       dim1_end_name  =  dimname_endc
+       dim2_beg_name  =  dimname_one
+       dim2_end_name  =  dimname_nlevdecomp_full
+       data_found   =  .true.
+
     case(E2L_FLUX_NIMM_VERTICALLY_RESOLVED)
        id_val         =  E2L_FLUX_NIMM_VERTICALLY_RESOLVED
        name_val       =  'actual immob vr'
@@ -123,6 +136,45 @@ contains
        id_val         =  E2L_FLUX_NMIN_VERTICALLY_RESOLVED
        name_val       =  'gross nmin vr'
        long_name_val  =  'gross nmin vr: EM to ELM'
+       units_val      =  '[gN/m3/s]'
+       is_real_type   =  .true.
+       ndim           =  2
+       dim1_beg_name  =  dimname_begc
+       dim1_end_name  =  dimname_endc
+       dim2_beg_name  =  dimname_one
+       dim2_end_name  =  dimname_nlevdecomp_full
+       data_found   =  .true.
+
+    case(E2L_FLUX_SMINN_TO_PLANT_VERTICALLY_RESOLVED)
+       id_val         =  E2L_FLUX_SMINN_TO_PLANT_VERTICALLY_RESOLVED
+       name_val       =  'sminn to plant vr'
+       long_name_val  =  'sminn to plant vr: EM to ELM'
+       units_val      =  '[gN/m3/s]'
+       is_real_type   =  .true.
+       ndim           =  2
+       dim1_beg_name  =  dimname_begc
+       dim1_end_name  =  dimname_endc
+       dim2_beg_name  =  dimname_one
+       dim2_end_name  =  dimname_nlevdecomp_full
+       data_found   =  .true.
+
+    case(E2L_FLUX_SMIN_NO3_TO_PLANT_VERTICALLY_RESOLVED)
+       id_val         =  E2L_FLUX_SMIN_NO3_TO_PLANT_VERTICALLY_RESOLVED
+       name_val       =  'smin no3 to plant vr'
+       long_name_val  =  'smin no3 to plant vr: EM to ELM'
+       units_val      =  '[gN/m3/s]'
+       is_real_type   =  .true.
+       ndim           =  2
+       dim1_beg_name  =  dimname_begc
+       dim1_end_name  =  dimname_endc
+       dim2_beg_name  =  dimname_one
+       dim2_end_name  =  dimname_nlevdecomp_full
+       data_found   =  .true.
+
+    case(E2L_FLUX_SMIN_NH4_TO_PLANT_VERTICALLY_RESOLVED)
+       id_val         =  E2L_FLUX_SMIN_NH4_TO_PLANT_VERTICALLY_RESOLVED
+       name_val       =  'smin nh4 to plant vr'
+       long_name_val  =  'smin nh4 to plant vr: EM to ELM'
        units_val      =  '[gN/m3/s]'
        is_real_type   =  .true.
        ndim           =  2

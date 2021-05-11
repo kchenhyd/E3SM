@@ -420,6 +420,8 @@ module clm_varctl
   character(len=32), public :: alquimia_Nimm_name    = 'Nimm' ! Name in reaction network
   character(len=32), public :: alquimia_Nimp_name    = 'Nimp' ! Name in reaction network
   character(len=32), public :: alquimia_Nmin_name    = 'Nmin' ! Name in reaction network
+  character(len=32), public ::  alquimia_plantNO3uptake_name = 'Tracer' ! Name in reaction network
+  character(len=32), public ::  alquimia_plantNH4uptake_name = 'Tracer2' ! Name in reaction network
   logical, public           :: alquimia_handsoff    = .false.
 
   ! cpl_bypass
