@@ -663,6 +663,7 @@ contains
          phr_vr                           =>    col_cf%phr_vr                             , & ! Output: [real(r8) (:,:)   ]  potential HR (gC/m3/s)
          fphr                             =>    col_cf%fphr                               , & ! Output: [real(r8) (:,:)   ]  fraction of potential SOM + LITTER heterotrophic
 
+         sminn_vr                         =>    col_ns%sminn_vr                        , &
          smin_no3_vr                      =>    col_ns%smin_no3_vr                     , &
          smin_nh4_vr                      =>    col_ns%smin_nh4_vr                       &
          )
@@ -682,12 +683,14 @@ contains
                do j = 1, nlevdecomp           ! sum up actual and potential column-level N fluxes to plant
                   supplement_to_sminn_vr(c,j) = col_plant_ndemand_vr(c,j) - (smin_nh4_to_plant_vr(c,j) + smin_no3_to_plant_vr(c,j))
                   smin_nh4_to_plant_vr(c,j)   = smin_nh4_to_plant_vr(c,j) + supplement_to_sminn_vr(c,j)
-                  sminn_to_plant_vr(c,j) = smin_no3_to_plant_vr(c,j) + smin_nh4_to_plant_vr(c,j)
                   ! Handle immobilization nitrogen. Potential and actual immob should be set by alquimia/Pflotran
                   if(potential_immob_vr(c,j)>0.0) then
                      ! For now, supplementing with potential immobilization value because only supplementing shortfall might underestimate
                      supplement_to_sminn_vr(c,j) = supplement_to_sminn_vr(c,j) + potential_immob_vr(c,j)
                   endif
+                  ! Supplement to immobilization is added back for next time step but supplement to plant N is only given to the plant, not soil,
+                  ! because we are skipping the subtraction of plant N from smin_nh4 in NitrogenStateUpdate1Mod
+                  smin_nh4_vr(c,j) = smin_nh4_vr(c,j) + potential_immob_vr(c,j)*dt
                end do
             end do
          endif
@@ -703,6 +706,13 @@ contains
             fpg_p(c) = 1.0_r8
             enddo
          endif
+         do fc=1,num_soilc
+            c = filter_soilc(fc)
+            do j = 1, nlevdecomp    
+               sminn_to_plant_vr(c,j) = smin_no3_to_plant_vr(c,j) + smin_nh4_to_plant_vr(c,j)
+               sminn_vr(c,j) = col_ns%smin_nh4_vr(c,j) + col_ns%smin_no3_vr(c,j)
+            enddo
+         enddo
       endif
 
       ! MUST have already updated needed bgc variables from PFLOTRAN by this point
