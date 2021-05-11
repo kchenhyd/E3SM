@@ -62,7 +62,8 @@ contains
     associate(& 
          actual_immob_vr    => col_nf%actual_immob_vr    , &
          potential_immob_vr => col_nf%potential_immob_vr , &
-         gross_nmin_vr      => col_nf%gross_nmin_vr        &
+         gross_nmin_vr      => col_nf%gross_nmin_vr      , &
+         plant_ndemand_vr   => col_nf%plant_ndemand_vr     &
          )
 
     count = 0
@@ -110,6 +111,15 @@ contains
              enddo
              cur_data%is_set = .true.
 
+          case (L2E_FLUX_PLANT_NDEMAND_VERTICALLY_RESOLVED)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevdecomp_full
+                   cur_data%data_real_2d(c,j) = plant_ndemand_vr(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
           end select
 
        endif
@@ -148,9 +158,12 @@ contains
     integer                             :: count
 
     associate(& 
-         actual_immob_vr    => col_nf%actual_immob_vr    , &
-         potential_immob_vr => col_nf%potential_immob_vr , &
-         gross_nmin_vr      => col_nf%gross_nmin_vr        &
+         actual_immob_vr      => col_nf%actual_immob_vr      , &
+         potential_immob_vr   => col_nf%potential_immob_vr   , &
+         gross_nmin_vr        => col_nf%gross_nmin_vr        , &
+         sminn_to_plant_vr    => col_nf%sminn_to_plant_vr    , &
+         smin_no3_to_plant_vr => col_nf%smin_no3_to_plant_vr , &
+         smin_nh4_to_plant_vr => col_nf%smin_nh4_to_plant_vr   &
          )
 
     count = 0
@@ -194,6 +207,33 @@ contains
                 c = filter(fc)
                 do j = 1, nlevdecomp_full
                    gross_nmin_vr(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_FLUX_SMINN_TO_PLANT_VERTICALLY_RESOLVED)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevdecomp_full
+                   sminn_to_plant_vr(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_FLUX_SMIN_NO3_TO_PLANT_VERTICALLY_RESOLVED)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevdecomp_full
+                   smin_no3_to_plant_vr(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_FLUX_SMIN_NH4_TO_PLANT_VERTICALLY_RESOLVED)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevdecomp_full
+                   smin_nh4_to_plant_vr(c,j) = cur_data%data_real_2d(c,j)
                 enddo
              enddo
              cur_data%is_set = .true.
