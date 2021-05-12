@@ -704,7 +704,6 @@ contains
                  qflx_lat_aqu(2) = -2._r8/(1._r8/ka_hu+1._r8/ka_ho) * (zwt_hu-zwt_ho- &
                      humhol_ht) / humhol_dist * sqrt(hum_frac/hol_frac)
                  salinity(1) = 20._r8 - 50_r8*qflx_lat_aqu(2)*dtime
-                 !salinity(1) = 0._r8
                  salinity(2) = 30._r8
                  !SLL column 1 is marsh, column 2 is tidal channel
                endif
