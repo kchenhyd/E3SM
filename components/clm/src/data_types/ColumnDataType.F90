@@ -614,6 +614,7 @@ module ColumnDataType
     real(r8), pointer :: externalc_to_decomp_delta             (:)     => null() ! col (gC/m2) summarized net change of whole column C i/o to decomposing pool bwtn time-step
     real(r8), pointer :: f_co2_soil_vr                         (:,:)   => null() ! total vertically-resolved soil-atm. CO2 exchange (gC/m3/s)
     real(r8), pointer :: f_co2_soil                            (:)     => null() ! total soil-atm. CO2 exchange (gC/m2/s)
+    ! Marsh response to salinity
 
   contains
     procedure, public :: Init       => col_cf_init
@@ -5558,7 +5559,7 @@ contains
     allocate(this%externalc_to_decomp_cpools        (begc:endc,1:nlevdecomp_full,1:ndecomp_pools)) ; this%externalc_to_decomp_cpools(:,:,:) = spval
     allocate(this%externalc_to_decomp_delta         (begc:endc))                  ; this%externalc_to_decomp_delta    (:)   = spval    
     allocate(this%f_co2_soil_vr                     (begc:endc,1:nlevdecomp_full)); this%f_co2_soil_vr                (:,:) = nan  
-    allocate(this%f_co2_soil                        (begc:endc))                  ; this%f_co2_soil                   (:)   = nan    
+    allocate(this%f_co2_soil                        (begc:endc))                  ; this%f_co2_soil                   (:)   = nan
     
     !-----------------------------------------------------------------------
     ! initialize history fields for select members of col_cf
@@ -6404,6 +6405,11 @@ contains
        call hist_addfld1d (fname='C14_PRODUCT_CLOSS', units='gC14/m^2/s', &
             avgflag='A', long_name='C14 total carbon loss from wood product pools', &
             ptr_col=this%product_closs)
+
+      this%osm_inhib(begc:endc) = spval
+      call hist_addfld1d (fname='OSM_INHIB',  units=' ',  &
+            avgflag='A', long_name='Factor to reduce growth due to salinity stress', &
+            ptr_col=this%osm_inhib)
 
        ! end of C14 block     
     end if  ! use_fates (C12) or C12 or C13 or C14 
