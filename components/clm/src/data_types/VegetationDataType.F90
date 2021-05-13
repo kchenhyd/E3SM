@@ -1964,8 +1964,7 @@ module VegetationDataType
        allocate(this%grainc_storage     (begp :endp))   ;  this%grainc_storage     (:)   = nan
        allocate(this%grainc_xfer        (begp :endp))   ;  this%grainc_xfer        (:)   = nan
        allocate(this%woodc              (begp :endp))   ;  this%woodc              (:)   = nan
-       allocate(this%totvegc_abg        (begp :endp))   ;  this%totvegc_abg        (:)   = nan !SLL 5-12-21
-       allocate(this%osm_inhib          (begp :endp))   ;  this%osm_inhib          (:)   = nan
+       allocate(this%totvegc_abg        (begp :endp))   ;  this%totvegc_abg        (:)   = nan 
     endif  !  not use_fates
 
     allocate(this%begcb              (begp :endp))   ;  this%begcb              (:) = nan
@@ -2287,10 +2286,6 @@ module VegetationDataType
                avgflag='A', long_name='C13 C used for crop seed that needs to be repaid', &
                ptr_patch=this%cropseedc_deficit)
 
-          this%osm_inhib(begc:endc) = spval
-          call hist_addfld1d (fname='OSM_INHIB',  units=' ',  &
-               avgflag='A', long_name='Factor to reduce growth due to salinity stress', &
-               ptr_col=this%osm_inhib)
        end if
        ! end of c13 block
 
@@ -2442,10 +2437,6 @@ module VegetationDataType
                avgflag='A', long_name='C14 C used for crop seed that needs to be repaid', &
                ptr_patch=this%cropseedc_deficit)
                      
-          this%osm_inhib(begc:endc) = spval
-          call hist_addfld1d (fname='OSM_INHIB',  units=' ',  &
-               avgflag='A', long_name='Factor to reduce growth due to salinity stress', &
-               ptr_col=this%osm_inhib)
        end if
        ! end of c14 block
     

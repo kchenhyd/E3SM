@@ -541,10 +541,12 @@ contains
          end if
 #else if (defined MARSH)
          !SLL add osm_inhib function here
+         write(iulog, *), 'salinity', salinity(1), 'bbb', bbb(p)
          if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
          osm_inhib(veg_pp%itype(p)) = (1-salinity(c)/(KM_salinity(veg_pp%itype(p))+salinity(c)))
             bbb(p) = max (bbbopt(p)*btran(p)*(osm_inhib(veg_pp%itype(p))), 1._r8)
             mbb(p) = mbbopt(p)
+         write(iulog, *), 'osm_inhib', osm_inhib, 'bbb', bbb(p)
          end if
 #endif
 
