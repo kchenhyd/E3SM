@@ -6406,11 +6406,6 @@ contains
             avgflag='A', long_name='C14 total carbon loss from wood product pools', &
             ptr_col=this%product_closs)
 
-      this%osm_inhib(begc:endc) = spval
-      call hist_addfld1d (fname='OSM_INHIB',  units=' ',  &
-            avgflag='A', long_name='Factor to reduce growth due to salinity stress', &
-            ptr_col=this%osm_inhib)
-
        ! end of C14 block     
     end if  ! use_fates (C12) or C12 or C13 or C14 
     
