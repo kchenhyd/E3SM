@@ -504,7 +504,7 @@ contains
 #if (defined HUM_HOL || defined MARSH)
              hol_frac = 1.0_r8 - hum_frac
              if (c .eq. 1) then
-               qflx_surf_input(1) = 0._r8 !hummock TAO KEEP AT ZERO!!!
+               qflx_surf_input(1) = 0._r8 !hummock TAO KEEP AT ZERO!!! !SLL is this keeping h2osfc at zero?
                qflx_surf_input(2) = qflx_surf(1)*(hum_frac/hol_frac)     !hollow  TAO
              end if
              qflx_in_soil(c) = (1._r8 - frac_h2osfc(c)) * (qflx_top_soil(c) - qflx_surf(c) + qflx_surf_input(c))
@@ -566,6 +566,7 @@ contains
                 qflx_surf(1) = qflx_surf(1) + qflx_in_h2osfc(c)
                 qflx_surf_input(2) = qflx_surf_input(2) + qflx_in_h2osfc(c)
                 qflx_in_h2osfc(c) = 0._r8  !TAO 22/8/2018 changing to sin function gave an error
+                !qflx_surf(1) is set to 0 earlier
              end if
 #endif
 

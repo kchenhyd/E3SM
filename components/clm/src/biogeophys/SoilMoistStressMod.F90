@@ -398,10 +398,18 @@ contains
                call soil_water_retention_curve%soil_suction(sucsat(c,j), s_node, bsw(c,j), smp_node)
                smp_node = max(smpsc(veg_pp%itype(p)), smp_node)
 
-               rresis(p,j) = min( (eff_porosity(c,j)/watsat(c,j))* &
+               !using osm_inhib to change root uptake
+               !if salinity(1) .ge. sal_threshold then
+               !   osm_inhib(veg_pp%itype(p)) = (1-salinity(c)/(KM_salinity(veg_pp%itype(p))+salinity(c)))
+               !   rresis(p,j) = min( (eff_porosity(c,j)/watsat(c,j))* &
+               !     (smp_node - smpsc(veg_pp%itype(p))) / (smpso(veg_pp%itype(p)) - smpsc(veg_pp%itype(p))), 1._r8)
+               !   rresis(p,j) = rresis(p,j)*osm_inhib(veg_pp%itype(p))
+                  
+               !else if salinity(1) .lt. sal_threhold then
+                  rresis(p,j) = min( (eff_porosity(c,j)/watsat(c,j))* &
                     (smp_node - smpsc(veg_pp%itype(p))) / (smpso(veg_pp%itype(p)) - smpsc(veg_pp%itype(p))), 1._r8)
-
-
+               !endif
+                  
                if (.not. (perchroot .or. perchroot_alt) ) then
                   rootr(p,j) = rootfr(p,j)*rresis(p,j)
                else
