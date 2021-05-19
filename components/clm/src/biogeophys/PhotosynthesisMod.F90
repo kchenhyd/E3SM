@@ -545,7 +545,10 @@ contains
          osm_inhib(veg_pp%itype(p)) = (1-salinity(c)/(KM_salinity(veg_pp%itype(p))+salinity(c)))
             bbb(p) = max (bbbopt(p)*btran(p)*(osm_inhib(veg_pp%itype(p))), 1._r8)
             mbb(p) = mbbopt(p)
-         write(iulog, *), 'osm_inhib', osm_inhib, 'bbb', bbb(p)
+         else osm_inhib(veg_pp%itype(p)) = 1.0_r8
+            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
+            mbb(p) = mbbopt(p)
+         write(iulog, *), 'osm_inhib', osm_inhib(14), 'bbb', bbb(p)
          end if
 #endif
 
