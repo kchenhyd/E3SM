@@ -550,7 +550,7 @@ contains
          !   osm_inhib(veg_pp%itype(p)) = 1.0_r8
             bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
             mbb(p) = mbbopt(p)
-         end if
+         !end if
          !write(iulog, *), 'osm_inhib', osm_inhib(14), 'bbb', bbb(p)
 #endif
 
