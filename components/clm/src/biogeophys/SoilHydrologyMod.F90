@@ -185,7 +185,7 @@ contains
 
 #if (defined MARSH)
          if (c .eq. 1) fsat(c) = 1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)))   !at 30cm, hummock saturated at 5% changed to 0.1 TAO
-         if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+0.15_r8)), 1._r8) !TAO 0.3 t0 0.1, 0.15 to 0.35 !bsulman: what does 0.15 represent?
+         if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+humhol_ht)), 1._r8) !TAO 0.3 t0 0.1, 0.15 to 0.35 !bsulman: what does 0.15 represent?
 #endif
          ! use perched water table to determine fsat (if present)
          if ( frost_table(c) > zwt(c)) then 
@@ -200,7 +200,7 @@ contains
 
 #if (defined MARSH)
             if (c .eq. 1) fsat(c) = 1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)))   !at 30cm, hummock saturated at 5%
-            if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+0.15_r8)), 1._r8) !TAO 0.3 t 0.1, 0.15 to 0.35
+            if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+humhol_ht)), 1._r8) !TAO 0.3 t 0.1, 0.15 to 0.35
 #endif
 
          else
@@ -213,7 +213,7 @@ contains
 
 #if (defined MARSH)
             if (c .eq. 1) fsat(c) = 1.0 * exp(-3.0_r8/humhol_ht*(zwt(c))) !at 30cm, hummock saturated at 5%
-            if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+0.15_r8)), 1._r8) !TAO 0.3 t 1.5, 0.15 to 0.35
+            if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+humhol_ht)), 1._r8) !TAO 0.3 t 1.5, 0.15 to 0.35
 #endif 
          endif
          if (origflag == 1) then
@@ -676,9 +676,10 @@ contains
                  zwt_ho = zwt_ho - h2osfc(2)/1000._r8   !DMR 4/29/13
                end if
                !DMR 12/4/2015
-               if (icefrac(1,min(jwt(1)+1,nlevsoi)) .ge. 0.01_r8 .or. &
-                       icefrac(2,min(jwt(2)+1,nlevsoi)) .ge. 0.01_r8) then
-                 !turn off lateral transport if any ice is present at or below
+               if (icefrac(1,min(jwt(1)+1,nlevsoi)) .ge. 0.90_r8 .or. &
+                       icefrac(2,min(jwt(2)+1,nlevsoi)) .ge. 0.90_r8) then
+                 !turn off lateral transport if any ice is present at or below,
+                 !changed from 0.01 to 0.90 TAO 6/4/2021
                  !water table
                  qflx_lat_aqu(:) = 0._r8
                else
@@ -1028,13 +1029,13 @@ contains
                  end do
               else ! deepening water table (negative lateral flux)
                 !Remove from surface water first if available
-                if (h2osfc(c) .gt. 0 .and. maxval(icefrac(c,1:jwt(c)+1)) .le. 0.9) then
+                if (h2osfc(c) .gt. 0) then ! .and. maxval(icefrac(c,1:jwt(c)+1)) .le. 0.9) then
                   h2osfc(c) = h2osfc(c) + qflx_lat_aqu_tot
                   qflx_lat_aqu_tot = 0._r8
                   if (h2osfc(c) .lt. 0) then
                     qflx_lat_aqu_tot = h2osfc(c)
                     call get_curr_time(days, seconds)
-                    h2osfc(c) = 0._r8 
+                    !h2osfc(c) = 0._r8 
                   end if
                 end if
                 do j = jwt(c)+1, nlevsoi
