@@ -598,7 +598,6 @@ contains
              else
                 qflx_h2osfc_surf(c)= 0._r8
              endif
-             write(iulog,*),__LINE__,c,h2osfc(c),zwt(c)
 
              ! cutoff lower limit
              if ( qflx_h2osfc_surf(c) < 1.0e-8) qflx_h2osfc_surf(c) = 0._r8 
@@ -616,7 +615,7 @@ contains
 
              !6. update h2osfc prior to calculating bottom drainage from h2osfc
              h2osfc(c) = h2osfc(c) + qflx_in_h2osfc(c) * dtime
-             write(iulog,*),__LINE__,c,h2osfc(c),qflx_in_h2osfc(c),qflx_h2osfc_surf(c) 
+
              !--  if all water evaporates, there will be no bottom drainage
              if (h2osfc(c) < 0.0) then
                 qflx_infl(c) = qflx_infl(c) + h2osfc(c)/dtime
@@ -657,7 +656,7 @@ contains
              if (c.eq.1) then
                zwt_hu = zwt(1)
                zwt_hu = zwt_hu - h2osfc(1)/1000._r8
-             endif
+            endif
 
              if (c.eq.2) then
                zwt_ho = zwt(2)
@@ -668,7 +667,6 @@ contains
                if (zwt_ho < 0.03_r8) then 
                  zwt_ho = zwt_ho - h2osfc(2)/1000._r8   !DMR 4/29/13
                end if
-
                !DMR 12/4/2015
                if (icefrac(1,min(jwt(1)+1,nlevsoi)) .ge. 0.90_r8 .or. &
                        icefrac(2,min(jwt(2)+1,nlevsoi)) .ge. 0.90_r8) then
@@ -691,7 +689,6 @@ contains
                 h2osfc_tide = max(h2osfc_tide + tide_baseline, 0.0)
                !  qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime
                 qflx_lat_aqu(2) = qflx_lat_aqu(2) + (h2osfc_tide-h2osfc(c))/dtime
-                write(iulog,*),__LINE__,qflx_lat_aqu(1),qflx_lat_aqu(2),zwt_ho,zwt_hu,h2osfc(1),h2osfc(2),zwt(1),zwt(2)
              endif
 #endif
 
@@ -1013,11 +1010,12 @@ contains
                    s_y = watsat(c,j) &
                        * ( 1. -  (1.+1.e3*zwt(c)/sucsat(c,j))**(-1./bsw(c,j)))
                    s_y=max(s_y,0.02_r8)
+   
                    qflx_lat_aqu_layer(c,j)=min(qflx_lat_aqu_tot,(s_y*(zwt(c) - zi(c,j-1))*1.e3))
                    qflx_lat_aqu_layer(c,j)=max(qflx_lat_aqu_layer(c,j),0._r8)
                    h2osoi_liq(c,j) = h2osoi_liq(c,j) + qflx_lat_aqu_layer(c,j)
                    qflx_lat_aqu_tot = qflx_lat_aqu_tot - qflx_lat_aqu_layer(c,j)
-
+   
                    !new code test DMR 4/29/13
                    if(s_y > 0._r8) zwt(c) = zwt(c) - qflx_lat_aqu_layer(c,j)/s_y/1000._r8
                    if (qflx_lat_aqu_tot <= 0.) then
