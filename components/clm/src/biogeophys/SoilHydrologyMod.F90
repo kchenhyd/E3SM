@@ -372,6 +372,7 @@ contains
      real(r8) :: hol_frac                        ! fraction of gridcell occupied by hummocks and hollows respectively
      real(r8) :: ka_ho                                     ! hydraulic conductivity terms at saturation for hummock (mmH2O/s)
      real(r8) :: ka_hu                                     ! hydraulic conductivity terms at saturation for hollow(mmH2O/s)
+     real(r8) :: ka_sfc                        ! Hydraulic conductivity for surface water difference (1/s)
      real(r8) :: zwt_ho, zwt_hu                            ! water table depth for hollows and hummocks respectively (m)
      real(r8) :: s_node
      integer  :: jwt(bounds%begc:bounds%endc)
@@ -583,7 +584,6 @@ contains
              if (h2osfc(c) .gt. 0._r8 .and. c==1) then
                 qflx_h2osfc_surf(c) = min(qflx_h2osfc_surfrate*h2osfc(c)**2.0_r8,h2osfc(c) / dtime) 
              else if (c .eq. 2) then
-                call get_curr_time (days, seconds)
                 qflx_h2osfc_surf(c) = 0._r8
 
 #else
@@ -682,6 +682,8 @@ contains
                endif
                ! bsulman : Changed to use flexible set of parameters up to full NOAA tidal components (37 coefficients)
                ! Tidal cycle is the sum of all the sinusoidal components
+#ifdef MARSH
+               call get_curr_time(days, seconds)
                h2osfc_tide = 0.0_r8
                 do ii=1,num_tide_comps
                   h2osfc_tide =    h2osfc_tide    +  tide_coeff_amp(ii) * sin(2.0_r8*SHR_CONST_PI*(1/tide_coeff_period(ii)*(days*secspday+seconds) + tide_coeff_phase(ii)))
@@ -689,6 +691,17 @@ contains
                 h2osfc_tide = max(h2osfc_tide + tide_baseline, 0.0)
                !  qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime
                 qflx_lat_aqu(2) = qflx_lat_aqu(2) + (h2osfc_tide-h2osfc(c))/dtime
+                
+                ! If flooded water surface of one column is higher than the other, add faster flow since aquifer transfer (ka parameters) is slow
+                ka_sfc=1.0/(3600*4.0) ! [s-1] ! Need to change to external parameter
+                if(h2osfc(2)>0 .and. h2osfc(2)>(h2osfc(1)+humhol_ht*1000.0)) then
+                  qflx_lat_aqu(2) = qflx_lat_aqu(2) - min((h2osfc(2)-(h2osfc(1)+humhol_ht*1000.0))*ka_sfc,h2osfc(2)*0.5/dtime)
+                  qflx_lat_aqu(1) = qflx_lat_aqu(1) + min((h2osfc(2)-(h2osfc(1)+humhol_ht*1000.0))*ka_sfc,h2osfc(2)*0.5/dtime)
+                elseif(h2osfc(1)>0 .and. h2osfc(1)>(h2osfc(2)-humhol_ht*1000.0)) then
+                  qflx_lat_aqu(2) = qflx_lat_aqu(2) + min((h2osfc(1)-(h2osfc(2)-humhol_ht*1000.0))*ka_sfc,h2osfc(1)*0.5/dtime)
+                  qflx_lat_aqu(1) = qflx_lat_aqu(1) - min((h2osfc(1)-(h2osfc(2)-humhol_ht*1000.0))*ka_sfc,h2osfc(1)*0.5/dtime)
+                endif
+#endif
              endif
 #endif
 
@@ -1035,7 +1048,6 @@ contains
                   qflx_lat_aqu_tot = 0._r8
                   if (h2osfc(c) .lt. 0) then
                     qflx_lat_aqu_tot = h2osfc(c)
-                    call get_curr_time(days, seconds)
                     h2osfc(c) = 0._r8 
                   end if
                 end if
