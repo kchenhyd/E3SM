@@ -315,7 +315,7 @@ contains
      use pftvarcon        , only : humhol_ht, humhol_dist, hum_frac, qflx_h2osfc_surfrate
 #endif
 #if defined MARSH
-      use pftvarcon       , only : num_tide_comps, tide_baseline,tide_coeff_period, tide_coeff_phase, tide_coeff_amp
+      use pftvarcon       , only : num_tide_comps, tide_baseline,tide_coeff_period, tide_coeff_phase, tide_coeff_amp,sfcflow_ratescale
 #endif
      use clm_time_manager , only : get_step_size, get_curr_date, get_curr_time
      use clm_varcon       , only : secspday
@@ -372,7 +372,6 @@ contains
      real(r8) :: hol_frac                        ! fraction of gridcell occupied by hummocks and hollows respectively
      real(r8) :: ka_ho                                     ! hydraulic conductivity terms at saturation for hummock (mmH2O/s)
      real(r8) :: ka_hu                                     ! hydraulic conductivity terms at saturation for hollow(mmH2O/s)
-     real(r8) :: ka_sfc                        ! Hydraulic conductivity for surface water difference (1/s)
      real(r8) :: zwt_ho, zwt_hu                            ! water table depth for hollows and hummocks respectively (m)
      real(r8) :: s_node
      integer  :: jwt(bounds%begc:bounds%endc)
@@ -693,13 +692,12 @@ contains
                 qflx_lat_aqu(2) = qflx_lat_aqu(2) + (h2osfc_tide-h2osfc(c))/dtime
                 
                 ! If flooded water surface of one column is higher than the other, add faster flow since aquifer transfer (ka parameters) is slow
-                ka_sfc=1.0/(3600*4.0) ! [s-1] ! Need to change to external parameter
                 if(h2osfc(2)>0 .and. h2osfc(2)>(h2osfc(1)+humhol_ht*1000.0)) then
-                  qflx_lat_aqu(2) = qflx_lat_aqu(2) - min((h2osfc(2)-(h2osfc(1)+humhol_ht*1000.0))*ka_sfc,h2osfc(2)*0.5/dtime)
-                  qflx_lat_aqu(1) = qflx_lat_aqu(1) + min((h2osfc(2)-(h2osfc(1)+humhol_ht*1000.0))*ka_sfc,h2osfc(2)*0.5/dtime)
+                  qflx_lat_aqu(2) = qflx_lat_aqu(2) - min((h2osfc(2)-(h2osfc(1)+humhol_ht*1000.0))*sfcflow_ratescale,h2osfc(2)*0.5/dtime)
+                  qflx_lat_aqu(1) = qflx_lat_aqu(1) + min((h2osfc(2)-(h2osfc(1)+humhol_ht*1000.0))*sfcflow_ratescale,h2osfc(2)*0.5/dtime)
                 elseif(h2osfc(1)>0 .and. h2osfc(1)>(h2osfc(2)-humhol_ht*1000.0)) then
-                  qflx_lat_aqu(2) = qflx_lat_aqu(2) + min((h2osfc(1)-(h2osfc(2)-humhol_ht*1000.0))*ka_sfc,h2osfc(1)*0.5/dtime)
-                  qflx_lat_aqu(1) = qflx_lat_aqu(1) - min((h2osfc(1)-(h2osfc(2)-humhol_ht*1000.0))*ka_sfc,h2osfc(1)*0.5/dtime)
+                  qflx_lat_aqu(2) = qflx_lat_aqu(2) + min((h2osfc(1)-(h2osfc(2)-humhol_ht*1000.0))*sfcflow_ratescale,h2osfc(1)*0.5/dtime)
+                  qflx_lat_aqu(1) = qflx_lat_aqu(1) - min((h2osfc(1)-(h2osfc(2)-humhol_ht*1000.0))*sfcflow_ratescale,h2osfc(1)*0.5/dtime)
                 endif
 #endif
              endif
