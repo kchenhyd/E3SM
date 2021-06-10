@@ -26,7 +26,7 @@ module  PhotosynthesisMod
   use SolarAbsorbedType   , only : solarabs_type
   use SurfaceAlbedoType   , only : surfalb_type
   use PhotosynthesisType  , only : photosyns_type
-  use VegetationType           , only : veg_pp
+  use VegetationType      , only : veg_pp
   use AllocationMod     , only : nu_com_leaf_physiology
   use PhosphorusStateType , only : phosphorusstate_type
   use CNNitrogenStateType , only : nitrogenstate_type
@@ -413,8 +413,8 @@ contains
          leafp_xfer    => veg_ps%leafp_xfer    , &
          i_vcmax       => veg_vp%i_vc                          , &
          s_vcmax       => veg_vp%s_vc                          , &
-         h2o_moss_wc   => veg_ws%h2o_moss_wc                  , & !Input: [real(r8) (:)   ]  Total Moss water content
-         h2osfc        => col_ws%h2osfc                       , & !Input: [real(r8) (:)   ]  Surface water
+         h2o_moss_wc   => veg_ws%h2o_moss_wc                   , & !Input: [real(r8) (:)   ]  Total Moss water content
+         h2osfc        => col_ws%h2osfc                        , & !Input: [real(r8) (:)   ]  Surface water
          salinity      => col_ws%salinity                      , & !Input: [real(r8) (:)   ] Salinity concentration ppt
          sal_threshold => veg_vp%sal_threshold                 , & !Input: [real(r8) (:)   ] Threshold salinity concentration to trigger osmotic inhibition (ppt)
          KM_salinity   => veg_vp%KM_salinity                   , & !Input: [real(r8) (:)   ] half saturation constant for osmotic inhibition function
@@ -1982,9 +1982,13 @@ contains
          leafp_xfer    => veg_ps%leafp_xfer    , &
          i_vcmax       => veg_vp%i_vc                          , &
          s_vcmax       => veg_vp%s_vc                          , &
-         bsw           => soilstate_inst%bsw_col                , & ! Input:  [real(r8) (:,:) ]  Clapp and Hornberger "b"
-         sucsat        => soilstate_inst%sucsat_col             ,  & ! Input:  [real(r8) (:,:) ]  minimum soil suction (mm)
-         ivt           => veg_pp%itype                             & ! Input:  [integer  (:)   ]  patch vegetation type
+         bsw           => soilstate_inst%bsw_col               , & ! Input:  [real(r8) (:,:) ]  Clapp and Hornberger "b"
+         sucsat        => soilstate_inst%sucsat_col            , & ! Input:  [real(r8) (:,:) ]  minimum soil suction (mm)
+         ivt           => veg_pp%itype                         , & ! Input:  [integer  (:)   ]  patch vegetation type
+         salinity      => col_ws%salinity                      , & ! Input:  [real(r8) (:)   ] salinity ppt
+         sal_threshold => veg_vp%sal_threshold                 , & !Input: [real(r8) (:)   ] Threshold salinity concentration to trigger osmotic inhibition (ppt)
+         KM_salinity   => veg_vp%KM_salinity                   , & !Input: [real(r8) (:)   ] half saturation constant for osmotic inhibition function
+         osm_inhib     => veg_vp%osm_inhib                       & !Input: [real(r8) (:)   ] osmotic inhibition factor
       )
       an_sun        =>    photosyns_inst%an_sun_patch         ! Output: [real(r8) (:,:) ]  net sunlit leaf photosynthesis (umol CO2/m**2/s)
       an_sha        =>    photosyns_inst%an_sha_patch         ! Output: [real(r8) (:,:) ]  net shaded leaf photosynthesis (umol CO2/m**2/s)
@@ -2148,8 +2152,14 @@ contains
 
          ! Soil water stress applied to Ball-Berry parameters
 
-         bbb(p) = bbbopt(p)
-         mbb(p) = mbbopt(p)
+#if (defined MARSH)
+         !SLL add osm_inhib function here
+         if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
+         osm_inhib(veg_pp%itype(p)) = (1-salinity(c)/(KM_salinity(veg_pp%itype(p))+salinity(c)))
+            bbb(p) = max (bbbopt(p)*btran(p)*(osm_inhib(veg_pp%itype(p))), 1._r8)
+            mbb(p) = mbbopt(p)
+         end if
+#endif
 
          ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment
          ! 24:253-259
