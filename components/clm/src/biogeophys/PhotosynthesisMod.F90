@@ -415,10 +415,6 @@ contains
          s_vcmax       => veg_vp%s_vc                          , &
          h2o_moss_wc   => veg_ws%h2o_moss_wc                  , & !Input: [real(r8) (:)   ]  Total Moss water content
          h2osfc        => col_ws%h2osfc                       , & !Input: [real(r8) (:)   ]  Surface water
-         salinity      => col_ws%salinity                     , & !Input: [real(r8) (:)   ]  salinity (SLL 4/9/2021)
-         h2osfc        => col_ws%h2osfc                       , & !Input: [real(r8) (:)   ]  Surface water
-         h2o_moss_wc   => veg_ws%h2o_moss_wc                   , & !Input: [real(r8) (:)   ]  Total Moss water content
-         h2osfc        => col_ws%h2osfc                        , & !Input: [real(r8) (:)   ]  Surface water
          salinity      => col_ws%salinity                      , & !Input: [real(r8) (:)   ] Salinity concentration ppt
          sal_threshold => veg_vp%sal_threshold                 , & !Input: [real(r8) (:)   ] Threshold salinity concentration to trigger osmotic inhibition (ppt)
          KM_salinity   => veg_vp%KM_salinity                   , & !Input: [real(r8) (:)   ] half saturation constant for osmotic inhibition function
