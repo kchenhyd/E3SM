@@ -415,8 +415,8 @@ contains
          s_vcmax       => veg_vp%s_vc                          , &
          h2o_moss_wc   => veg_ws%h2o_moss_wc                  , & !Input: [real(r8) (:)   ]  Total Moss water content
          h2osfc        => col_ws%h2osfc                       , & !Input: [real(r8) (:)   ]  Surface water
-         salinity      => col_ws%salinity                       & !Input: [real(r8) (:)   ]  salinity (SLL 4/9/2021)
-         h2osfc        => col_ws%h2osfc                         & !Input: [real(r8) (:)   ]  Surface water
+         salinity      => col_ws%salinity                     , & !Input: [real(r8) (:)   ]  salinity (SLL 4/9/2021)
+         h2osfc        => col_ws%h2osfc                       , & !Input: [real(r8) (:)   ]  Surface water
          h2o_moss_wc   => veg_ws%h2o_moss_wc                   , & !Input: [real(r8) (:)   ]  Total Moss water content
          h2osfc        => col_ws%h2osfc                        , & !Input: [real(r8) (:)   ]  Surface water
          salinity      => col_ws%salinity                      , & !Input: [real(r8) (:)   ] Salinity concentration ppt
@@ -545,6 +545,8 @@ contains
          end if
 #else
          bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
+         mbb(p) = mbbopt(p)
+
 !#else if (defined MARSH)
          !SLL add osm_inhib function here
          !write(iulog, *), 'salinity', salinity(1), 'bbb', bbb(p)
@@ -554,8 +556,8 @@ contains
          !   mbb(p) = mbbopt(p)
          !else 
          !   osm_inhib(veg_pp%itype(p)) = 1.0_r8
-            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
-            mbb(p) = mbbopt(p)
+         !   bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
+         !   mbb(p) = mbbopt(p)
          !end if
          !write(iulog, *), 'osm_inhib', osm_inhib(14), 'bbb', bbb(p)
 #endif
@@ -2149,15 +2151,9 @@ contains
          end if
 
          ! Soil water stress applied to Ball-Berry parameters
-            bbb(p) = (bbbopt(p)*btran(p))
-         else
-            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
-            mbb(p) = mbbopt(p)
-         end if
-#elseif
+
          bbb(p) = bbbopt(p)
          mbb(p) = mbbopt(p)
-#endif
 
          ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment
          ! 24:253-259
