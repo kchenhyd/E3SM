@@ -30,6 +30,7 @@ module ExternalModelConstants
   
   integer, public, parameter :: EM_ID_ALQUIMIA                                   = 600
   integer, public, parameter :: EM_ALQUIMIA_SOLVE_STAGE                          = 601
+  integer, public, parameter :: EM_ALQUIMIA_COLDSTART_STAGE                      = 602
 
   ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   ! IDs for variable sent from ALM to External Model
