@@ -2145,22 +2145,15 @@ contains
          end if
 
          ! Soil water stress applied to Ball-Berry parameters
-<<<<<<< HEAD
 
-#if (defined MARSH)
+!#if (defined MARSH)
          !SLL add osm_inhib function here
-         if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
-         osm_inhib(veg_pp%itype(p)) = (1-salinity(c)/(KM_salinity(veg_pp%itype(p))+salinity(c)))
-            bbb(p) = max (bbbopt(p)*btran(p)*(osm_inhib(veg_pp%itype(p))), 1._r8)
-=======
-            bbb(p) = (bbbopt(p)*btran(p))
-         else
-            bbb(p) = max (bbbopt(p)*btran(p), 1._r8)
->>>>>>> corrected syntax for salinity array
-            mbb(p) = mbbopt(p)
-         end if
-
-#endif
+         !if (salinity(c) > sal_threshold(veg_pp%itype(p))) then
+         !osm_inhib(veg_pp%itype(p)) = (1-salinity(c)/(KM_salinity(veg_pp%itype(p))+salinity(c)))
+         !   bbb(p) = max (bbbopt(p)*btran(p)*(osm_inhib(veg_pp%itype(p))), 1._r8)
+         !   mbb(p) = mbbopt(p)
+         !end if
+!#endif
 
          ! kc, ko, cp, from: Bernacchi et al (2001) Plant, Cell and Environment
          ! 24:253-259
