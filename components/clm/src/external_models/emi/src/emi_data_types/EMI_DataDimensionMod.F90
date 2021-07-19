@@ -44,7 +44,7 @@ implicit none
     character(*), parameter :: dimname_alquimia_num_aux_ints  = 'alquimia_num_aux_ints';
 
   type emi_data_dimension_type
-     character(len=24) :: name ! String labelling this IO type
+     character(len=32) :: name ! String labelling this IO type
 
      type(emi_data_dimension_type), pointer :: next
    contains
@@ -209,6 +209,13 @@ contains
     call this%AddDimByName(dimname_nlevdecomp_full)
     call this%AddDimByName(dimname_ndecomp_pools)
 
+    call this%AddDimByName(dimname_alquimia_num_primary)
+    call this%AddDimByName(dimname_alquimia_num_minerals)
+    call this%AddDimByName(dimname_alquimia_num_surface_sites)
+    call this%AddDimByName(dimname_alquimia_num_ion_exchange_sites)
+    call this%AddDimByName(dimname_alquimia_num_aux_doubles)
+    call this%AddDimByName(dimname_alquimia_num_aux_ints)
+
   end subroutine EMID_Dim_List_Init
 
   !------------------------------------------------------------------------
@@ -280,7 +287,6 @@ contains
     cur_dim => this%first
     do
        if (.not.associated(cur_dim)) exit
-
        if (trim(cur_dim%name) .eq. dim_name) then
           call cur_dim%GetDimValue(bounds_clump, dim_name, dim_value)
           dim_found = .true.

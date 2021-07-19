@@ -551,6 +551,7 @@ contains
     use ExternalModelConstants    , only: EM_ID_ALQUIMIA,EM_ALQUIMIA_SOLVE_STAGE
     use clm_time_manager          , only: get_step_size_real
     use clm_varctl                , only: use_alquimia
+    use clm_instMod               , only: chemstate_vars
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds
@@ -608,6 +609,7 @@ contains
               nitrogenstate_vars= col_ns                    , &
               nitrogenflux_vars = col_nf                    , &
               waterstate_vars   = waterstate_vars           , &
+              chemstate_vars    = chemstate_vars            , &
               num_soilc         = num_soilc                 , &
               filter_soilc      = filter_soilc              , &
               col_es            = col_es)

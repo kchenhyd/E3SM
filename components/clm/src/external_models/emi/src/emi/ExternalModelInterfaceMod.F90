@@ -348,8 +348,6 @@ contains
            ! Allocate memory for data
            call EMI_Setup_Data_List(l2e_init_list(clump_rank), bounds_clump)
            call EMI_Setup_Data_List(e2l_init_list(clump_rank), bounds_clump)
-           call EMI_Setup_Data_List(l2e_driver_list(iem)     , bounds_clump)
-           call EMI_Setup_Data_List(e2l_driver_list(iem)     , bounds_clump)
 
            ! Reset values in the data list
            call EMID_Reset_Data_for_EM(l2e_init_list(clump_rank), em_stage)
@@ -389,6 +387,10 @@ contains
 
            call l2e_init_list(clump_rank)%Destroy()
            call e2l_init_list(clump_rank)%Destroy()
+
+           ! This must happen after em_alquimia%init because alquimia_sizes are needed for dimension sizes in driver list
+           call EMI_Setup_Data_List(l2e_driver_list(iem)     , bounds_clump)
+           call EMI_Setup_Data_List(e2l_driver_list(iem)     , bounds_clump)
 
         enddo
         !$OMP END PARALLEL DO
@@ -1124,6 +1126,13 @@ contains
             num_soilc, filter_soilc, chemstate_vars)
    endif
 
+   if (present(soilstate_vars)  .and. &
+      present(num_soilc)   .and. &
+      present(filter_soilc)) then
+      call EMI_Pack_SoilStateType_at_Column_Level_for_EM(l2e_driver_list(iem), em_stage, &
+            num_soilc, filter_soilc, soilstate_vars)
+   endif
+
     call EMID_Verify_All_Data_Is_Set(l2e_driver_list(iem), em_stage)
 
     ! ------------------------------------------------------------------------
@@ -1288,7 +1297,7 @@ contains
     if (present(chemstate_vars)  .and. &
       present(num_soilc)   .and. &
       present(filter_soilc)) then
-      call EMI_UnPack_ChemStateType_at_Column_Level_from_EM(l2e_driver_list(iem), em_stage, &
+      call EMI_UnPack_ChemStateType_at_Column_Level_from_EM(e2l_driver_list(iem), em_stage, &
             num_soilc, filter_soilc, chemstate_vars)
    endif
 

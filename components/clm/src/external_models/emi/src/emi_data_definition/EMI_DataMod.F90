@@ -36,14 +36,14 @@ module EMI_DataMod
      character (len=10) :: dim3_name
      character (len=10) :: dim4_name
 
-     character (len=24) :: dim1_beg_name
-     character (len=24) :: dim2_beg_name
-     character (len=24) :: dim3_beg_name
-     character (len=24) :: dim4_beg_name
-     character (len=24) :: dim1_end_name
-     character (len=24) :: dim2_end_name
-     character (len=24) :: dim3_end_name
-     character (len=24) :: dim4_end_name
+     character (len=32) :: dim1_beg_name
+     character (len=32) :: dim2_beg_name
+     character (len=32) :: dim3_beg_name
+     character (len=32) :: dim4_beg_name
+     character (len=32) :: dim1_end_name
+     character (len=32) :: dim2_end_name
+     character (len=32) :: dim3_end_name
+     character (len=32) :: dim4_end_name
 
      integer :: dim1_beg, dim1_end
      integer :: dim2_beg, dim2_end
@@ -1316,15 +1316,15 @@ contains
     integer                                :: ndim
     character (len=32)                     :: name_val
     character (len=128)                    :: long_name_val
-    character (len=24)                     :: units_val
-    character (len=24)                     :: dim1_beg_name
-    character (len=24)                     :: dim2_beg_name
-    character (len=24)                     :: dim3_beg_name
-    character (len=24)                     :: dim4_beg_name
-    character (len=24)                     :: dim1_end_name
-    character (len=24)                     :: dim2_end_name
-    character (len=24)                     :: dim3_end_name
-    character (len=24)                     :: dim4_end_name
+    character (len=32)                     :: units_val
+    character (len=32)                     :: dim1_beg_name
+    character (len=32)                     :: dim2_beg_name
+    character (len=32)                     :: dim3_beg_name
+    character (len=32)                     :: dim4_beg_name
+    character (len=32)                     :: dim1_end_name
+    character (len=32)                     :: dim2_end_name
+    character (len=32)                     :: dim3_end_name
+    character (len=32)                     :: dim4_end_name
     logical                                :: is_int_type
     logical                                :: is_real_type
     logical                                :: data_present
