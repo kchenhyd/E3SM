@@ -24,6 +24,7 @@ module ExternalModelAlquimiaMod
   use EMI_CNNitrogenStateType_Constants
   use EMI_CNNitrogenFluxType_Constants
   use EMI_CNCarbonFluxType_Constants
+  use EMI_ChemStateType_Constants
 
 #ifdef USE_ALQUIMIA_LIB
    use AlquimiaContainers_module, only : AlquimiaSizes,AlquimiaProblemMetaData,AlquimiaProperties,&
@@ -110,10 +111,10 @@ module ExternalModelAlquimiaMod
     type(AlquimiaProblemMetaData) :: chem_metadata
     
     ! Chemical properties and state
-    type(AlquimiaProperties), pointer :: chem_properties  ! One copy per processor
-    type(AlquimiaState)     , pointer :: chem_state       ! Contains a list of species in the structure
-    type(AlquimiaAuxiliaryData), pointer   :: chem_aux_data
-    type(AlquimiaAuxiliaryOutputData), pointer   :: chem_aux_output
+    type(AlquimiaProperties) :: chem_properties  ! One copy per processor
+    type(AlquimiaState)      :: chem_state       ! Contains a list of species in the structure
+    type(AlquimiaAuxiliaryData)   :: chem_aux_data
+    type(AlquimiaAuxiliaryOutputData)   :: chem_aux_output
     
     ! Initial condition. Maybe this can just be created and destroyed in a subroutine?
     type(AlquimiaGeochemicalCondition) :: chem_ic
@@ -173,24 +174,12 @@ contains
     integer                  :: id
     integer                  :: index
     
-    number_em_stages = 1
-    allocate(em_stages(number_em_stages))
-    em_stages(1) = EM_INITIALIZATION_STAGE
+    ! number_em_stages = 1
+    ! allocate(em_stages(number_em_stages))
+    ! em_stages(1) = EM_INITIALIZATION_STAGE
 
-    id                                   = L2E_FILTER_SOILC
-    call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
-    this%index_l2e_init_filter_soilc     = index
 
-    id                                   = L2E_FILTER_NUM_SOILC
-    call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
-    this%index_l2e_init_filter_num_soilc = index
-    
-    id                                             = L2E_STATE_TSOIL_NLEVSOI_COL
-    call l2e_init_list%AddDataByID(id, number_em_stages, em_stages, index)
-    this%index_l2e_init_state_temperature_soil              = index
-
-    
-    deallocate(em_stages)
+    ! deallocate(em_stages)
     
     write(iulog,*)'L2EInit List:'
     call l2e_init_list%PrintInfo()
@@ -243,13 +232,6 @@ contains
     em_stages(1) = EM_Alquimia_SOLVE_STAGE
 
 
-    id                                   = L2E_FILTER_SOILC
-    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
-    this%index_l2e_filter_soilc     = index
-
-    id                                   = L2E_FILTER_NUM_SOILC
-    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
-    this%index_l2e_filter_num_soilc = index
 
     ! Liquid water
     id                                   = L2E_STATE_H2OSOI_LIQ_NLEVGRND
@@ -293,7 +275,58 @@ contains
     call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_l2e_flux_plantNdemand              = index
 
-    ! This is only needed for cold start  stage
+
+    ! Alquimia data is sent from ELM to Alquimia only at solve stage (not set yet at cold start stage)
+
+    id                                             = L2E_STATE_WATER_DENSITY
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_water_density      = index
+
+    id                                             = L2E_STATE_AQUEOUS_PRESSURE
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_aqueous_pressure      = index
+
+    id                                             = L2E_STATE_TOTAL_IMMOBILE
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_total_immobile      = index
+
+    id                                             = L2E_STATE_TOTAL_MOBILE
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_total_mobile      = index
+
+    id                                             = L2E_STATE_MINERAL_VOLUME_FRACTION
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_mineral_volume_fraction      = index
+
+    id                                             = L2E_STATE_MINERAL_SPECIFIC_SURFACE_AREA
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_mineral_specific_surface_area      = index
+
+    id                                             = L2E_STATE_SURFACE_SITE_DENSITY
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_surface_site_density      = index
+
+    id                                             = L2E_STATE_CATION_EXCHANGE_CAPACITY
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_cation_exchange_capacity     = index
+
+    id                                             = L2E_STATE_AUX_DOUBLES
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_aux_doubles      = index
+
+    id                                             = L2E_STATE_AUX_INTS
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_aux_ints      = index
+
+
+
+    ! Needed for both stages
+    deallocate(em_stages)
+    number_em_stages = 2
+    allocate(em_stages(number_em_stages))
+    em_stages(1) = EM_ALQUIMIA_SOLVE_STAGE
+    em_stages(2) = EM_ALQUIMIA_COLDSTART_STAGE
+
     id                                             = L2E_PARAMETER_WATSATC
     call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_l2e_state_watsatc              = index
@@ -301,6 +334,15 @@ contains
     id                                             = L2E_COLUMN_DZ
     call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_l2e_col_dz              = index
+
+    id                                   = L2E_FILTER_SOILC
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_filter_soilc     = index
+
+    id                                   = L2E_FILTER_NUM_SOILC
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_filter_num_soilc = index
+
 
     deallocate(em_stages)
     
@@ -377,6 +419,53 @@ contains
     call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_e2l_flux_plantNH4uptake      = index
 
+    ! These need to be exchanged in both stages
+    deallocate(em_stages)
+    number_em_stages = 2
+    allocate(em_stages(number_em_stages))
+    em_stages(1) = EM_ALQUIMIA_SOLVE_STAGE
+    em_stages(2) = EM_ALQUIMIA_COLDSTART_STAGE
+
+    id                                             = E2L_STATE_WATER_DENSITY
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_water_density      = index
+
+    id                                             = E2L_STATE_AQUEOUS_PRESSURE
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_aqueous_pressure      = index
+
+    id                                             = E2L_STATE_TOTAL_IMMOBILE
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_total_immobile      = index
+
+    id                                             = E2L_STATE_TOTAL_MOBILE
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_total_mobile      = index
+
+    id                                             = E2L_STATE_MINERAL_VOLUME_FRACTION
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_mineral_volume_fraction      = index
+
+    id                                             = E2L_STATE_MINERAL_SPECIFIC_SURFACE_AREA
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_mineral_specific_surface_area      = index
+
+    id                                             = E2L_STATE_SURFACE_SITE_DENSITY
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_surface_site_density      = index
+
+    id                                             = E2L_STATE_CATION_EXCHANGE_CAPACITY
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_cation_exchange_capacity     = index
+
+    id                                             = E2L_STATE_AUX_DOUBLES
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_aux_doubles      = index
+
+    id                                             = E2L_STATE_AUX_INTS
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_aux_ints      = index
+
     deallocate(em_stages)
 
     write(iulog,*)'E2L List:'
@@ -436,12 +525,16 @@ contains
     
     write(iulog,*), 'Entering Alquimia setup'
     
-    ! These are parameters of Alquimia engine. Need to read them in somehow
     inputfile   = alquimia_inputfile
     engine_name = alquimia_engine_name
     IC_name     = alquimia_IC_name  ! Name of initial condition
     hands_off = alquimia_handsoff  ! hands_off = .false. allows/requires rate constants, mineral rate const, CEC, complexation site density, and isotherms to be passed through alquimia 
     
+    ! Make sure these are not defined until explicitly set
+    this%carbon_pool_mapping   => NULL()
+    this%nitrogen_pool_mapping => NULL()
+    this%pool_reaction_mapping => NULL()
+
     ! Allocate memory for status container
     call AllocateAlquimiaEngineStatus(this%chem_status)
     ! Point Alquimia interface to correct subroutines (based on engine that was specified in engine_name)
@@ -622,6 +715,7 @@ subroutine EMAlquimia_Coldstart(this, clump_rank, l2e_list, e2l_list, bounds_clu
             call c_f_string_ptr(this%chem_status%message,status_message)
             call endrun(msg='Alquimia error in ProcessCondition: '//status_message)
           endif
+
           
           ! But this can only happen after ELM allocation step, so this whole thing might need to move somewhere else
           call this%copy_Alquimia_to_ELM(c,j,water_density_e2l,&
@@ -680,7 +774,7 @@ end subroutine EMAlquimia_Coldstart
     real(r8) , pointer, dimension(:,:)  :: no3_e2l,no3_l2e,nh4_e2l,nh4_l2e
     real(r8) , pointer, dimension(:,:)  :: Nimm_e2l, Nimp_e2l, Nmin_e2l
     real(r8) , pointer, dimension(:,:)  :: plantNO3uptake_e2l,plantNH4uptake_e2l, plantNdemand_l2e
-    real(r8) , pointer, dimension(:,:)  :: water_density_l2e,water_density_e2l,aqueous_pressure_l2e,aqueous_pressure_e2l,porosity_l2e
+    real(r8) , pointer, dimension(:,:)  :: water_density_l2e,water_density_e2l,aqueous_pressure_l2e,aqueous_pressure_e2l,porosity_l2e,dz
     real(r8) , pointer, dimension(:,:,:) :: total_mobile_l2e , total_mobile_e2l
     real(r8) , pointer, dimension(:,:,:) :: total_immobile_l2e , total_immobile_e2l
     real(r8) , pointer, dimension(:,:,:) :: mineral_volume_fraction_l2e , mineral_volume_fraction_e2l
@@ -708,6 +802,8 @@ end subroutine EMAlquimia_Coldstart
     ! Column filters
     call l2e_list%GetPointerToInt1D(this%index_l2e_filter_soilc , filter_soilc   )
     call l2e_list%GetIntValue(this%index_l2e_filter_num_soilc          , num_soilc   )
+
+    call l2e_list%GetPointerToReal2D(this%index_l2e_col_dz, dz)
     
     ! C and N pools. Units: gC/m2, gN/m2
     call l2e_list%GetPointerToReal3D(this%index_l2e_state_decomp_cpools , soilcarbon_l2e)
@@ -791,10 +887,12 @@ end subroutine EMAlquimia_Coldstart
             ! Update properties from ELM. Does it make more sense to put these in above subroutine call?
              this%chem_state%porosity =    porosity_l2e(c,j)
              this%chem_state%temperature = temperature(c,j) - 273.15
+             this%chem_properties%volume = dz(c,j)
+             this%chem_properties%saturation = 1.0
              ! Set volume and saturation?
              ! Saturation determines volume of water and concentration of aqueous species
              ! Not sure if volume actually matters
-             
+
              ! Set rate constants in properties.aqueous_kinetic_rate_cnst if in hands_on mode
              ! Should we check if we are in hands_on mode?
              ! Discussions with Peter, Fengming, Scott, Ethan suggested we should avoid setting rate constants this way and let PFLOTRAN handle it
@@ -1255,7 +1353,7 @@ end subroutine EMAlquimia_Coldstart
   
   subroutine print_pools(this,c,j)
 
-    use clm_varpar, only : ndecomp_pools
+    use clm_varpar, only : ndecomp_pools,ndecomp_cascade_transitions
     use iso_c_binding, only : c_f_pointer, c_double
     use CNDecompCascadeConType, only : decomp_cascade_con
 
@@ -1266,10 +1364,11 @@ end subroutine EMAlquimia_Coldstart
 
     integer :: poolnum
     character(len=256) :: poolname
-    real (c_double), pointer :: alquimia_mobile_data(:), alquimia_immobile_data(:)
+    real (c_double), pointer :: alquimia_mobile_data(:), alquimia_immobile_data(:), alquimia_rates_data(:)
 
     call c_f_pointer(this%chem_state%total_immobile%data, alquimia_immobile_data, (/this%chem_sizes%num_primary/))
     call c_f_pointer(this%chem_state%total_mobile%data, alquimia_mobile_data, (/this%chem_sizes%num_primary/))
+    call c_f_pointer(this%chem_properties%aqueous_kinetic_rate_cnst%data, alquimia_rates_data, (/this%chem_properties%aqueous_kinetic_rate_cnst%size/))
 
     write(iulog,*), "Carbon pool values: Immobile pools"
     do poolnum=1,ndecomp_pools
@@ -1344,8 +1443,17 @@ end subroutine EMAlquimia_Coldstart
       write(iulog,*),'NO3 pool not in alquimia'
     endif
     
+    write(iulog,*) "Rate constants"
+    do poolnum=1, ndecomp_cascade_transitions
+      if(this%pool_reaction_mapping(decomp_cascade_con%cascade_donor_pool(poolnum))>0) then
+        write(iulog,*),trim(decomp_cascade_con%cascade_step_name(poolnum)),alquimia_rates_data(this%pool_reaction_mapping(decomp_cascade_con%cascade_donor_pool(poolnum)))
+      endif
+    enddo
 
-  end subroutine
+    if(this%plantNH4uptake_reaction_number>0) write(iulog,*),'Plant NH4 uptake',alquimia_rates_data(this%plantNH4uptake_reaction_number)
+    if(this%plantNO3uptake_reaction_number>0) write(iulog,*),'Plant NO3 uptake',alquimia_rates_data(this%plantNO3uptake_reaction_number)
+
+  end subroutine print_pools
 
   recursive subroutine run_onestep(this,c,j,dt,num_cuts,max_cuts)
     
@@ -1389,7 +1497,7 @@ end subroutine EMAlquimia_Coldstart
     else ! Solve did not converge. Cut timestep, and bail out if too short
       if(actual_dt/2 < min_dt) then
         call c_f_string_ptr(this%chem_status%message,status_message)
-        write(msg,'(a,i3,a,f1.2,a,i3,a,i5)') "Error: Alquimia ReactionStepOperatorSplit failed to converge after ",num_cuts,"cuts to dt = ",actual_dt,' s. Layer = ',j,"Col = ",c
+        write(msg,'(a,i3,a,f5.2,a,i3,a,i5)') "Error: Alquimia ReactionStepOperatorSplit failed to converge after ",num_cuts," cuts to dt = ",actual_dt,' s. Layer = ',j," Col = ",c
         call print_pools(this,c,j)
         call printState(this%chem_state)
         call endrun(msg=msg)
