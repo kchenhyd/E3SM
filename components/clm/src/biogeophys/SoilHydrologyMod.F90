@@ -379,7 +379,6 @@ contains
      integer  :: days, seconds               !
      integer  :: ii
      real(r8) :: h2osfc_tide
-     real(r8) :: h2o_rootzone                !volume water in top 30 cm
      real(r8) :: marsh_salt(1:nlevgrnd)     !salt mass in marsh column
      !-----------------------------------------------------------------------
 
@@ -1620,15 +1619,16 @@ contains
          !h2o_rootzone=sum(h2osoi_liq(j))
          !end do
  !Salt balance -SLL
-                if (qflx_lat_aqu_layer(1,:) < 0.0_r8) then
-                  marsh_salt = marsh_salt + (salinity(2,:)*qflx_lat_aqu_layer(2,:)*dtime)
-                elseif(qflx_lat_aqu_layer(1,:) > 0.0_r8) then
-                  marsh_salt = marsh_salt - (salinity(1,:)*qflx_lat_aqu_layer(1)*dtime)
+ #if (defined MARSH)
+                if (c .eq. 1 .and. qflx_lat_aqu_layer(j) < 0.0_r8) then
+                  marsh_salt(j) = marsh_salt(j) - (salinity(c,j)*qflx_lat_aqu_layer(2,j)*dtime)
+                elseif(c .eq. 1 .and. qflx_lat_aqu_layer(j) > 0.0_r8) then
+                  marsh_salt(j) = marsh_salt(j) + (salinity(c,j)*qflx_lat_aqu_layer(1,j)*dtime)
+                  salinity(j) = marsh_salt(j)/h2osoi_liq(j)
+               elseif(c .eq. 2) then
+                  salinity(j) = 35.0_r8
                 ! calculate salinity(1) after all water fluxes updated, divide by water in rooting zone
                 endif
-
-         salinity(1,:) = marsh_salt/h2osoi_liq(1,:)
-         salinity(2) = 35.0_r8
 #else
 
 

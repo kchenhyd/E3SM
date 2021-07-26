@@ -614,7 +614,6 @@ module ColumnDataType
     real(r8), pointer :: externalc_to_decomp_delta             (:)     => null() ! col (gC/m2) summarized net change of whole column C i/o to decomposing pool bwtn time-step
     real(r8), pointer :: f_co2_soil_vr                         (:,:)   => null() ! total vertically-resolved soil-atm. CO2 exchange (gC/m3/s)
     real(r8), pointer :: f_co2_soil                            (:)     => null() ! total soil-atm. CO2 exchange (gC/m2/s)
-    ! Marsh response to salinity
 
   contains
     procedure, public :: Init       => col_cf_init
@@ -1488,7 +1487,7 @@ contains
        this%total_plant_stored_h2o(c) = 0._r8
        this%h2osfc(c)                 = 0._r8
        this%h2ocan(c)                 = 0._r8
-       this%salinity(c,:)               = 0._r8 !TAO added 5/19/2020
+       !this%salinity(c,:)               = 0._r8 !TAO added 5/19/2020 commented out SLL 7/14/21
        this%frac_h2osfc(c)            = 0._r8
 
        if (lun_pp%urbpoi(l)) then
