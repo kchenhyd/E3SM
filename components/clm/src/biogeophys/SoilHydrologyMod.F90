@@ -379,7 +379,7 @@ contains
      integer  :: days, seconds               !
      integer  :: ii
      real(r8) :: h2osfc_tide
-     real(r8) :: marsh_salt(1:nlevgrnd)     !salt mass in marsh column
+     real(r8) :: salt_content(bounds%begc:bounds%endc, 1:nlevgrnd)     !salt mass in marsh column
      !-----------------------------------------------------------------------
 
      associate(                                                                & 
@@ -396,8 +396,8 @@ contains
           h2osno               =>    col_ws%h2osno              , & ! Input:  [real(r8) (:)   ]  snow water (mm H2O)                               
           snow_depth           =>    col_ws%snow_depth          , & ! Input:  [real(r8) (:)   ]  snow height (m)                                   
           h2osfc               =>    col_ws%h2osfc              , & ! Output: [real(r8) (:)   ]  surface water (mm)                                
-          salinity             =>    col_ws%salinity            , & ! Input:  [real(r8) (:)   ] salinity concentration (ppt)
-
+          salinity             =>    col_ws%salinity            , & ! Input:  [real(r8) (:,:)   ] salinity concentration (ppt)
+          salt_content         =>    col_ws%salt_content        , & ! Input:  [real(r8) (:,:) ] mass of salt in soil later (g)
           qflx_ev_soil         =>    col_wf%qflx_ev_soil         , & ! Input:  [real(r8) (:)   ]  evaporation flux from soil (W/m**2) [+ to atm]    
           qflx_evap_soi        =>    col_wf%qflx_evap_soi        , & ! Input:  [real(r8) (:)   ]  ground surface evaporation rate (mm H2O/s) [+]    
           qflx_evap_grnd       =>    col_wf%qflx_evap_grnd       , & ! Input:  [real(r8) (:)   ]  ground surface evaporation rate (mm H2O/s) [+]    
@@ -1287,8 +1287,6 @@ contains
      real(r8) :: rel_moist                ! relative moisture, temporary variable
      real(r8) :: wtsub_vic                ! summation of hk*dzmm for layers in the third VIC layer
      real(r8) :: deep_seep                ! Deep seepage for SPRUCE
-     real(r8) :: h2o_rootzone                !volumne water in top 30 cm
-     real(r8) :: marsh_salt(1:nlevgrnd)                  !salt mass in marsh column
 
      !-----------------------------------------------------------------------
 
@@ -1341,9 +1339,11 @@ contains
 
           h2osoi_liq         =>    col_ws%h2osoi_liq        , & ! Output: [real(r8) (:,:) ] liquid water (kg/m2)                            
 #if (defined HUM_HOL || defined MARSH)
-          qflx_surf_input    =>    col_wf%qflx_surf_input   , & ! Output: [real(r8) (:,:) ] surface runoff input to hollow (mmH2O/s)
-          qflx_lat_aqu       =>    col_wf%qflx_lat_aqu      , & ! Output: [real(r8) (:,:) ] total lateral flow
-          qflx_lat_aqu_layer =>    col_wf%qflx_lat_aqu_layer , & ! Output: [real(r8) (:,:) ] lateral flow for each layer
+          qflx_surf_input    =>    col_wf%qflx_surf_input      , & ! Output: [real(r8) (:,:) ] surface runoff input to hollow (mmH2O/s)
+          qflx_lat_aqu       =>    col_wf%qflx_lat_aqu         , & ! Output: [real(r8) (:,:) ] total lateral flow
+          qflx_lat_aqu_layer =>    col_wf%qflx_lat_aqu_layer   , & ! Output: [real(r8) (:,:) ] lateral flow for each layer
+          salinity             =>    col_ws%salinity           , & ! Input:  [real(r8) (:,:)   ] salinity concentration (ppt)
+          salt_content         =>    col_ws%salt_content       , & ! Input:  [real(r8) (:,:) ] mass of salt in soil later (g)
 #endif
           h2osoi_ice         =>    col_ws%h2osoi_ice         & ! Output: [real(r8) (:,:) ] ice lens (kg/m2)   
           )
@@ -1614,21 +1614,21 @@ contains
             endif
           endif
 
-          !calculate h2o_rootzone and salinity after water fluxes updated -SLL
-         !do (dz <=30._r8)
-         !h2o_rootzone=sum(h2osoi_liq(j))
-         !end do
- !Salt balance -SLL
+   !Salinity and salt content
  #if (defined MARSH)
-                if (c .eq. 1 .and. qflx_lat_aqu_layer(j) < 0.0_r8) then
-                  marsh_salt(j) = marsh_salt(j) - (salinity(c,j)*qflx_lat_aqu_layer(2,j)*dtime)
+         do j=1,nlevgrnd
+            marsh_salt(c,j)=salinity(c,j)*h2osoi_liq(c,j)
+                if (c .eq. 1 .and. qflx_lat_aqu_layer(c,j) < 0.0_r8) then
+                
+                  marsh_salt(c,j) = marsh_salt(c,j) + (salinity(1,j)*qflx_lat_aqu_layer(1,j)*dtime)
+                  salinity(c,j) = marsh_salt(c,j)/h2osoi_liq(c,j)
                 elseif(c .eq. 1 .and. qflx_lat_aqu_layer(j) > 0.0_r8) then
-                  marsh_salt(j) = marsh_salt(j) + (salinity(c,j)*qflx_lat_aqu_layer(1,j)*dtime)
-                  salinity(j) = marsh_salt(j)/h2osoi_liq(j)
+                  marsh_salt(c,j) = marsh_salt(c,j) + (salinity(2,j)*qflx_lat_aqu_layer(1,j)*dtime)
+                  salinity(c,j) = marsh_salt(c,j)/h2osoi_liq(c,j)
                elseif(c .eq. 2) then
-                  salinity(j) = 35.0_r8
-                ! calculate salinity(1) after all water fluxes updated, divide by water in rooting zone
+                  salinity(c,j) = 35.0_r8
                 endif
+         enddo
 #else
 
 
