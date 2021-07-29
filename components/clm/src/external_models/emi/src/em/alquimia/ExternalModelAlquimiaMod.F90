@@ -716,7 +716,7 @@ subroutine EMAlquimia_Coldstart(this, clump_rank, l2e_list, e2l_list, bounds_clu
             call endrun(msg='Alquimia error in ProcessCondition: '//status_message)
           endif
 
-          
+          this%chem_state%porosity = porosity_l2e(c,j)
           ! But this can only happen after ELM allocation step, so this whole thing might need to move somewhere else
           call this%copy_Alquimia_to_ELM(c,j,water_density_e2l,&
                                         aqueous_pressure_e2l,&
@@ -920,7 +920,7 @@ end subroutine EMAlquimia_Coldstart
                ! Separate N pool only exists if floating CN ratio
                 !  write(iulog,*),poolnum,soilnitrogen_l2e(c,j,poolnum)
                if(decomp_cascade_con%floating_cn_ratio_decomp_pools(poolnum) .and. this%nitrogen_pool_mapping(poolnum)>0) &
-                  alquimia_immobile_data(this%nitrogen_pool_mapping(poolnum)) = max(soilnitrogen_l2e(c,j,poolnum)/natomw,minval)
+                  alquimia_immobile_data(this%nitrogen_pool_mapping(poolnum)) = max(soilnitrogen_l2e(c,j,poolnum)/natomw,minval/20)
              enddo
              
              CO2_before = alquimia_immobile_data(this%CO2_pool_number)*catomw + &
@@ -933,6 +933,7 @@ end subroutine EMAlquimia_Coldstart
 
              ! Set rate constant based on plant N demand. Convert from gN/m3/s to mol/L/s
              ! Also scale rates by relative concentrations of NO3 and NH4 so total uptake doesn't exceed demand
+             ! If running alquimia in hands-off mode, approach needs to be different. Probably set biomass in uptake equation to control rate
             if(this%plantNH4uptake_reaction_number>0) then
               alquimia_rates_data(this%plantNH4uptake_reaction_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*this%chem_state%porosity)
               if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
@@ -1017,7 +1018,9 @@ end subroutine EMAlquimia_Coldstart
               ! Note: Generates errors if not multiplied by layer volume (imbalance on the order of 1e-8 gN/m3)
               if(abs(sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j)-&
                         (sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)+plantNO3uptake_e2l(c,j)*dt+plantNH4uptake_e2l(c,j)*dt))*this%chem_properties%volume>1e-9) then
-                write(iulog,'(a,1x,i3,a,i3)'),'Nitrogen imbalance after alquimia solve step in layer',j,' Column ',c,__FILE__,__LINE__
+                write(iulog,'(a,1x,i3,a,i4)'),'Nitrogen imbalance after alquimia solve step in layer',j,' Column ',c,__FILE__,__LINE__
+                call print_pools(this,c,j)
+                
                 write(iulog,'(a25,3e20.8)'),'Total N: ', sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j),&
                                             sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)+plantNH4uptake_e2l(c,j)*dt+plantNO3uptake_e2l(c,j)*dt,&
                                             sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)+plantNO3uptake_e2l(c,j)*dt+plantNH4uptake_e2l(c,j)*dt-(sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j))
@@ -1334,6 +1337,7 @@ end subroutine EMAlquimia_Coldstart
 
     ! Find plant NO3 and NH4 uptake reactions to rate constants can be set
     ! This is trickier for Microbial reactions because they are named by stoichiometry and representation depends on precision in input deck
+    ! Best long-term solution is probably running in hands-off mode to avoid this entirely
     alq_poolname = '1.0000e+00 NH4+  -> 1.0000e+00 Tracer2' ! Todo: Fix this! !
     this%plantNH4uptake_reaction_number = find_alquimia_pool(alq_poolname,name_list,this%chem_metadata%aqueous_kinetic_names%size)
     if(this%plantNH4uptake_reaction_number>0) then 
@@ -1453,12 +1457,13 @@ end subroutine EMAlquimia_Coldstart
     if(this%plantNH4uptake_reaction_number>0) write(iulog,*),'Plant NH4 uptake',alquimia_rates_data(this%plantNH4uptake_reaction_number)
     if(this%plantNO3uptake_reaction_number>0) write(iulog,*),'Plant NO3 uptake',alquimia_rates_data(this%plantNO3uptake_reaction_number)
 
+    write(iulog,*),'Porosity =',this%chem_state%porosity
+
   end subroutine print_pools
 
   recursive subroutine run_onestep(this,c,j,dt,num_cuts,max_cuts)
     
     use c_f_interface_module, only : c_f_string_ptr
-    use PFloTranAlquimiaInterface_module, only : printState
     
     implicit none
     
@@ -1497,9 +1502,8 @@ end subroutine EMAlquimia_Coldstart
     else ! Solve did not converge. Cut timestep, and bail out if too short
       if(actual_dt/2 < min_dt) then
         call c_f_string_ptr(this%chem_status%message,status_message)
-        write(msg,'(a,i3,a,f5.2,a,i3,a,i5)') "Error: Alquimia ReactionStepOperatorSplit failed to converge after ",num_cuts," cuts to dt = ",actual_dt,' s. Layer = ',j," Col = ",c
+        write(msg,'(a,i3,a,f5.2,a,i4,a,i3,a,i5)') "Error: Alquimia ReactionStepOperatorSplit failed to converge after ",num_cuts," cuts to dt = ",actual_dt,' s. Newton iterations = ',this%chem_status%num_newton_iterations,' Layer = ',j," Col = ",c
         call print_pools(this,c,j)
-        call printState(this%chem_state)
         call endrun(msg=msg)
       else
         ! If we are not at minimum timestep yet, cut and keep going
