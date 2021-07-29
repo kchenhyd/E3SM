@@ -1617,14 +1617,14 @@ contains
    !Salinity and salt content
  #if (defined MARSH)
          do j=1,nlevgrnd
-            marsh_salt(c,j)=salinity(c,j)*h2osoi_liq(c,j)
+         salinity(2,j) = 35.0_r8
+            salt_content(c,j)=salinity(c,j)*h2osoi_liq(c,j)
                 if (c .eq. 1 .and. qflx_lat_aqu_layer(c,j) < 0.0_r8) then
-                
-                  marsh_salt(c,j) = marsh_salt(c,j) + (salinity(1,j)*qflx_lat_aqu_layer(1,j)*dtime)
-                  salinity(c,j) = marsh_salt(c,j)/h2osoi_liq(c,j)
-                elseif(c .eq. 1 .and. qflx_lat_aqu_layer(j) > 0.0_r8) then
-                  marsh_salt(c,j) = marsh_salt(c,j) + (salinity(2,j)*qflx_lat_aqu_layer(1,j)*dtime)
-                  salinity(c,j) = marsh_salt(c,j)/h2osoi_liq(c,j)
+                  salt_content(c,j) = salt_content(c,j) + (salinity(1,j)*qflx_lat_aqu_layer(1,j)*dtime)
+                  salinity(c,j) = salt_content(c,j)/h2osoi_liq(c,j)
+                elseif(c .eq. 1 .and. qflx_lat_aqu_layer(c,j) > 0.0_r8) then
+                  salt_content(c,j) = salt_content(c,j) + (salinity(2,j)*qflx_lat_aqu_layer(1,j)*dtime)
+                  salinity(c,j) = salt_content(c,j)/h2osoi_liq(c,j)
                elseif(c .eq. 2) then
                   salinity(c,j) = 35.0_r8
                 endif
