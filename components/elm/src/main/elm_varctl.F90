@@ -469,7 +469,9 @@ module elm_varctl
   character(len=32), public :: alquimia_Nmin_name   = 'Nmin' ! Name in reaction network
   character(len=32), public :: alquimia_plantNO3uptake_name = 'Tracer' ! Name in reaction network
   character(len=32), public :: alquimia_plantNH4uptake_name = 'Tracer2' ! Name in reaction network
-  logical, public           :: alquimia_handsoff    = .false.
+  character(len=32), public :: alquimia_plantNO3demand_name = 'Plant_NO3_demand'
+  character(len=32), public :: alquimia_plantNH4demand_name = 'Plant_NH4_demand'
+  logical, public           :: alquimia_handsoff    = .true.
 
 
   ! cpl_bypass

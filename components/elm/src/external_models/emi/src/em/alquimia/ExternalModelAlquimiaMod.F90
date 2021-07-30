@@ -130,7 +130,8 @@ module ExternalModelAlquimiaMod
     integer                              :: NH4_pool_number,NO3_pool_number
     integer                              :: Nimm_pool_number,Nmin_pool_number,Nimp_pool_number
     integer                              :: plantNO3uptake_pool_number,plantNH4uptake_pool_number
-    integer                              :: plantNH4uptake_reaction_number,plantNO3uptake_reaction_number
+    integer                              :: plantNO3demand_pool_number,plantNH4demand_pool_number
+    integer                              :: plantNO3uptake_reaction_number,plantNH4uptake_reaction_number
     
    contains
      procedure, public :: Populate_L2E_Init_List  => EMAlquimia_Populate_L2E_Init_List
@@ -933,16 +934,19 @@ end subroutine EMAlquimia_Coldstart
 
              ! Set rate constant based on plant N demand. Convert from gN/m3/s to mol/L/s
              ! Also scale rates by relative concentrations of NO3 and NH4 so total uptake doesn't exceed demand
-             ! If running alquimia in hands-off mode, approach needs to be different. Probably set biomass in uptake equation to control rate
-            if(this%plantNH4uptake_reaction_number>0) then
-              alquimia_rates_data(this%plantNH4uptake_reaction_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*this%chem_state%porosity)
+             ! Assumes alquimia is running in hands-off mode: Biomass term of N uptake microbial reaction is set to plant NO3 or NH4 demand
+             ! This assumes the rate constant of the reaction is set to 1 mol/L/s in the input deck!
+            if(this%plantNH4demand_pool_number>0) then
+              alquimia_immobile_data(this%plantNH4demand_pool_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*this%chem_state%porosity)
               if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
-                  alquimia_rates_data(this%plantNH4uptake_reaction_number) = alquimia_rates_data(this%plantNH4uptake_reaction_number)*nh4_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
+                  alquimia_immobile_data(this%plantNH4demand_pool_number) = alquimia_immobile_data(this%plantNH4demand_pool_number)*nh4_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
+              alquimia_immobile_data(this%plantNH4demand_pool_number) = max(alquimia_immobile_data(this%plantNH4demand_pool_number),minval)
             endif
-            if(this%plantNO3uptake_reaction_number>0) then
-              alquimia_rates_data(this%plantNO3uptake_reaction_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*this%chem_state%porosity)
+            if(this%plantNO3demand_pool_number>0) then
+              alquimia_immobile_data(this%plantNO3demand_pool_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*this%chem_state%porosity)
               if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
-                alquimia_rates_data(this%plantNO3uptake_reaction_number) = alquimia_rates_data(this%plantNO3uptake_reaction_number)*no3_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
+                alquimia_immobile_data(this%plantNO3demand_pool_number) = alquimia_immobile_data(this%plantNO3demand_pool_number)*no3_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
+              alquimia_immobile_data(this%plantNO3demand_pool_number) = max(alquimia_immobile_data(this%plantNO3demand_pool_number),minval)
             endif
 
            
@@ -958,7 +962,7 @@ end subroutine EMAlquimia_Coldstart
 
               ! Step the chemistry solver, including timestep cutting capability
               call run_onestep(this, c,j, dt,0,max_cuts)
-              if(max_cuts>3) write(iulog,'(a,i2,a,2i3)'),"Alquimia converged after",max_cuts,"cuts",c,j
+              if(max_cuts>3) write(iulog,'(a,i2,a,2i3)'),"Alquimia converged after",max_cuts," cuts",c,j
 
               ! Save back to ELM
               call this%copy_Alquimia_to_ELM(c,j,water_density_e2l,&
@@ -1191,7 +1195,7 @@ end subroutine EMAlquimia_Coldstart
     use CNDecompCascadeConType, only : decomp_cascade_con
     use clm_varctl, only : alquimia_IC_name,alquimia_CO2_name,&
         alquimia_NO3_name,alquimia_NH4_name,alquimia_Nimp_name,alquimia_Nmin_name,alquimia_Nimm_name,&
-        alquimia_plantNO3uptake_name,alquimia_plantNH4uptake_name
+        alquimia_plantNO3uptake_name,alquimia_plantNH4uptake_name,alquimia_plantNO3demand_name,alquimia_plantNH4demand_name
     use clm_varpar, only : nlevdecomp, ndecomp_pools, ndecomp_cascade_transitions
 
     class(em_alquimia_type)              :: this
@@ -1304,6 +1308,22 @@ end subroutine EMAlquimia_Coldstart
       write(iulog,'(a,i3,1X,a)'),'WARNING: No match for pool',ii,trim(alquimia_plantNO3uptake_name)
     endif
     this%plantNO3uptake_pool_number = pool_num
+
+    pool_num = find_alquimia_pool(alquimia_plantNH4demand_name,name_list,this%chem_sizes%num_primary)
+    if (pool_num>0) then
+      write(iulog,'(a,6x,a,i3,1x,a)'),'Plant NH4 demand', '<-> Alquimia pool',pool_num,trim(alquimia_plantNH4demand_name)
+    else
+      write(iulog,'(a,i3,1X,a)'),'WARNING: No match for pool',ii,trim(alquimia_plantNH4demand_name)
+    endif
+    this%plantNH4demand_pool_number = pool_num
+
+    pool_num = find_alquimia_pool(alquimia_plantNO3demand_name,name_list,this%chem_sizes%num_primary)
+    if (pool_num>0) then
+      write(iulog,'(a,6x,a,i3,1x,a)'),'Plant NO3 demand', '<-> Alquimia pool',pool_num,trim(alquimia_plantNO3demand_name)
+    else
+      write(iulog,'(a,i3,1X,a)'),'WARNING: No match for pool',ii,trim(alquimia_plantNO3demand_name)
+    endif
+    this%plantNO3demand_pool_number = pool_num
 
     ! Need to map out reactions as well
     allocate(this%pool_reaction_mapping(ndecomp_pools))
@@ -1445,6 +1465,17 @@ end subroutine EMAlquimia_Coldstart
       write(iulog,'(a8,i4,e12.5)'),'NO3',this%NO3_pool_number,alquimia_mobile_data(this%NO3_pool_number)
     else
       write(iulog,*),'NO3 pool not in alquimia'
+    endif
+
+    if(this%plantNO3demand_pool_number>0) then
+      write(iulog,'(a,i4,e12.5)'),'Plant NO3 demand',this%plantNO3demand_pool_number,alquimia_immobile_data(this%plantNO3demand_pool_number)
+    else
+      write(iulog,*),'Plant NO3 demand pool not in alquimia'
+    endif
+    if(this%plantNH4demand_pool_number>0) then
+      write(iulog,'(a,i4,e12.5)'),'Plant NH4 demand',this%plantNH4demand_pool_number,alquimia_immobile_data(this%plantNH4demand_pool_number)
+    else
+      write(iulog,*),'Plant NH4 demand pool not in alquimia'
     endif
     
     write(iulog,*) "Rate constants"

@@ -82,7 +82,7 @@ module ChemStateType
     ! Initialize module data structure
     !
     ! !USES:
-    use elm_varpar            , only : nlevsoi
+    use elm_varpar            , only : nlevdecomp_full
     ! Sizes were set by alquimia as part of initialization
     use elm_varctl            , only : use_alquimia
     use elm_varpar            , only : alquimia_num_primary, alquimia_num_minerals,&
@@ -102,7 +102,7 @@ module ChemStateType
     begc = bounds%begc;
     endc = bounds%endc
     lbj  = 1;
-    ubj  = nlevsoi
+    ubj  = nlevdecomp_full
     
     allocate(this%soil_pH(begc:endc, lbj:ubj))
 
@@ -139,7 +139,7 @@ module ChemStateType
                                  alquimia_num_surface_sites, alquimia_num_ion_exchange_sites, &
                                  alquimia_num_aux_doubles, alquimia_num_aux_ints
     use clm_varctl               , only : use_alquimia
-    use clm_varpar            , only : nlevsoi
+    use clm_varpar            , only : nlevdecomp_full
 
     implicit none
     !
@@ -262,7 +262,7 @@ module ChemStateType
 
       ! Aux integers. These don't have metadata
       ! Restart system only supports 1D ints so I am casting this to real
-      allocate(int2d(bounds%begc,bounds%endc:nlevsoi))
+      allocate(int2d(bounds%begc:bounds%endc,1:nlevdecomp_full))
       do ii=1,alquimia_num_aux_ints
         write(nc_varname,'(a,i2.2)') 'ALQUIMIA_AUX_INT_',ii
         var_longname = ''
@@ -280,12 +280,12 @@ module ChemStateType
 
       call restartvar(ncid=ncid, flag=flag, varname='ALQUIMIA_WATER_DENSITY', xtype=ncd_double,   &
         dim1name='column', dim2name='levgrnd', switchdim=.true., &
-        long_name=var_longname, units='kg/m^3', &
+        long_name='alquimia water density', units='kg/m^3', &
         interpinic_flag='interp', readvar=readvar, data=this%water_density)
 
       call restartvar(ncid=ncid, flag=flag, varname='ALQUIMIA_AQUEOUS_PRESSURE', xtype=ncd_double,   &
         dim1name='column', dim2name='levgrnd', switchdim=.true., &
-        long_name=var_longname, units='Pa', &
+        long_name='alquimia aqueous pressure', units='Pa', &
         interpinic_flag='interp', readvar=readvar, data=this%aqueous_pressure)
     endif
 
