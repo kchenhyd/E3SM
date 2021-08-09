@@ -25,6 +25,7 @@ module ExternalModelAlquimiaMod
   use EMI_CNNitrogenFluxType_Constants
   use EMI_CNCarbonFluxType_Constants
   use EMI_ChemStateType_Constants
+  use EMI_ColumnWaterStateType_Constants
 
 #ifdef USE_ALQUIMIA_LIB
    use AlquimiaContainers_module, only : AlquimiaSizes,AlquimiaProblemMetaData,AlquimiaProperties,&
@@ -54,8 +55,7 @@ module ExternalModelAlquimiaMod
     integer :: index_l2e_state_watsatc ! Porosity
     integer :: index_l2e_filter_soilc
     integer :: index_l2e_filter_num_soilc
-    integer :: index_l2e_state_h2osoi_liq
-    integer :: index_l2e_state_h2osoi_ice
+    integer :: index_l2e_state_h2osoi_liqvol
     integer :: index_l2e_state_decomp_cpools
     integer :: index_l2e_state_decomp_npools
     integer :: index_l2e_state_temperature_soil
@@ -235,14 +235,9 @@ contains
 
 
     ! Liquid water
-    id                                   = L2E_STATE_H2OSOI_LIQ_NLEVGRND
+    id                                   = L2E_STATE_SOIL_LIQ_VOL_COL
     call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
-    this%index_l2e_state_h2osoi_liq      = index
-
-    ! Solid  water
-    id                                   = L2E_STATE_H2OSOI_ICE_NLEVGRND
-    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
-    this%index_l2e_state_h2osoi_ice      = index
+    this%index_l2e_state_h2osoi_liqvol      = index
     
     ! Carbon pools
     id                                             = L2E_STATE_CARBON_POOLS_VERTICALLY_RESOLVED
@@ -662,7 +657,7 @@ subroutine EMAlquimia_Coldstart(this, clump_rank, l2e_list, e2l_list, bounds_clu
   class(emi_data_list) , intent(inout) :: e2l_list
   type(bounds_type)    , intent (in)   :: bounds_clump
 
-  real(r8) , pointer, dimension(:,:)   ::  porosity_l2e, dz
+  real(r8) , pointer, dimension(:,:)   ::  porosity_l2e, dz, h2o_liqvol
   real(r8) , pointer, dimension(:,:)   ::  water_density_e2l,aqueous_pressure_e2l
   real(r8) , pointer, dimension(:,:,:) ::  total_mobile_e2l
   real(r8) , pointer, dimension(:,:,:) ::  total_immobile_e2l
@@ -682,6 +677,7 @@ subroutine EMAlquimia_Coldstart(this, clump_rank, l2e_list, e2l_list, bounds_clu
   call l2e_list%GetPointerToReal2D(this%index_l2e_col_dz, dz)  
 
   call l2e_list%GetPointerToReal2D(this%index_l2e_state_watsatc       , porosity_l2e     )
+  call l2e_list%GetPointerToReal2D(this%index_l2e_state_h2osoi_liqvol, h2o_liqvol) ! m3/m3
 
   ! Alquimia state data to set on ELM side
   call e2l_list%GetPointerToReal2D(this%index_e2l_water_density, water_density_e2l)
@@ -704,7 +700,7 @@ subroutine EMAlquimia_Coldstart(this, clump_rank, l2e_list, e2l_list, bounds_clu
           
           ! Initialize the state for the cell
           this%chem_properties%volume = dz(c,j)
-          this%chem_properties%saturation = 1.0 ! l2e_saturation(c,j)
+          this%chem_properties%saturation = h2o_liqvol(c,j)/porosity_l2e(c,j)
           this%chem_state%water_density = 1.0e3_r8
           this%chem_state%porosity = porosity_l2e(c,j)
           this%chem_state%aqueous_pressure = 101325.0
@@ -771,7 +767,7 @@ end subroutine EMAlquimia_Coldstart
     real(r8) , pointer, dimension(:,:,:)    :: soilcarbon_l2e,soilcarbon_e2l 
     real(r8) , pointer, dimension(:,:,:)    :: soilnitrogen_l2e,soilnitrogen_e2l 
     real(r8) , pointer, dimension(:,:,:)    :: decomp_k
-    real(r8) , pointer, dimension(:,:)    :: hr_e2l , temperature, h2o_liq, h2o_ice
+    real(r8) , pointer, dimension(:,:)    :: hr_e2l , temperature, h2o_liqvol
     real(r8) , pointer, dimension(:,:)  :: no3_e2l,no3_l2e,nh4_e2l,nh4_l2e
     real(r8) , pointer, dimension(:,:)  :: Nimm_e2l, Nimp_e2l, Nmin_e2l
     real(r8) , pointer, dimension(:,:)  :: plantNO3uptake_e2l,plantNH4uptake_e2l, plantNdemand_l2e
@@ -785,6 +781,7 @@ end subroutine EMAlquimia_Coldstart
     real(r8) , pointer, dimension(:,:,:) :: aux_doubles_l2e , aux_doubles_e2l
     integer  , pointer, dimension(:,:,:)   :: aux_ints_l2e, aux_ints_e2l
     real(r8)                            :: CO2_before
+    real(r8)                            :: molperL_to_molperm3
     real(r8), parameter                 :: minval = 1.e-30_r8 ! Minimum value to pass to PFLOTRAN to avoid numerical errors with concentrations of 0
     
     ! Setting these to the values in PFLOTRAN clm_rspfuncs.F90
@@ -816,7 +813,7 @@ end subroutine EMAlquimia_Coldstart
 
     ! Abiotic factors
     call l2e_list%GetPointerToReal2D(this%index_l2e_state_temperature_soil , temperature  ) ! K
-    ! call l2e_list%GetPointerToReal2D(this%index_l2e_state_h2osoi_liq, h2o_liq) ! kg/m2
+    call l2e_list%GetPointerToReal2D(this%index_l2e_state_h2osoi_liqvol, h2o_liqvol) ! m3/m3
     ! call l2e_list%GetPointerToReal2D(this%index_l2e_state_h2osoi_ice, h2o_ice) ! kg/m2
     
     ! Pool turnover rate constants calculated in ELM, incorporating T and moisture effects (1/s)
@@ -889,7 +886,11 @@ end subroutine EMAlquimia_Coldstart
              this%chem_state%porosity =    porosity_l2e(c,j)
              this%chem_state%temperature = temperature(c,j) - 273.15
              this%chem_properties%volume = dz(c,j)
-             this%chem_properties%saturation = 1.0
+             this%chem_properties%saturation = max(h2o_liqvol(c,j)/porosity_l2e(c,j),0.01) ! Set minimum saturation to stop concentrations from blowing up at low soil moisture
+             
+             ! Conversion from aqueous Alquimia units (mol/L water) to ELM units (mol/m3 bulk)
+             molperL_to_molperm3 = 1000.0*this%chem_state%porosity*this%chem_properties%saturation
+             ! Should we read aqueous pressure in from ELM?
              ! Set volume and saturation?
              ! Saturation determines volume of water and concentration of aqueous species
              ! Not sure if volume actually matters
@@ -925,25 +926,25 @@ end subroutine EMAlquimia_Coldstart
              enddo
              
              CO2_before = alquimia_immobile_data(this%CO2_pool_number)*catomw + &
-                          alquimia_mobile_data(this%CO2_pool_number)*catomw*(1000.0*this%chem_state%porosity)
+                          alquimia_mobile_data(this%CO2_pool_number)*catomw*(molperL_to_molperm3)
 
              ! Copy dissolved nitrogen species. Units need to be converted from gN/m3 to M/L. Currently assuming saturated porosity
              
-             if(this%NO3_pool_number>0) alquimia_mobile_data(this%NO3_pool_number) = max(no3_l2e(c,j)/natomw/(1000.0*this%chem_state%porosity),minval)
-             if(this%NH4_pool_number>0) alquimia_mobile_data(this%NH4_pool_number) = max(nh4_l2e(c,j)/natomw/(1000.0*this%chem_state%porosity),minval)
+             if(this%NO3_pool_number>0) alquimia_mobile_data(this%NO3_pool_number) = max(no3_l2e(c,j)/natomw/(molperL_to_molperm3),minval)
+             if(this%NH4_pool_number>0) alquimia_mobile_data(this%NH4_pool_number) = max(nh4_l2e(c,j)/natomw/(molperL_to_molperm3),minval)
 
              ! Set rate constant based on plant N demand. Convert from gN/m3/s to mol/L/s
              ! Also scale rates by relative concentrations of NO3 and NH4 so total uptake doesn't exceed demand
              ! Assumes alquimia is running in hands-off mode: Biomass term of N uptake microbial reaction is set to plant NO3 or NH4 demand
-             ! This assumes the rate constant of the reaction is set to 1 mol/L/s in the input deck!
+             ! This assumes the rate constant of the reaction is set to 1 in the input deck!
             if(this%plantNH4demand_pool_number>0) then
-              alquimia_immobile_data(this%plantNH4demand_pool_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*this%chem_state%porosity)
+              alquimia_immobile_data(this%plantNH4demand_pool_number) = plantNdemand_l2e(c,j)/natomw/(molperL_to_molperm3)
               if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
                   alquimia_immobile_data(this%plantNH4demand_pool_number) = alquimia_immobile_data(this%plantNH4demand_pool_number)*nh4_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
               alquimia_immobile_data(this%plantNH4demand_pool_number) = max(alquimia_immobile_data(this%plantNH4demand_pool_number),minval)
             endif
             if(this%plantNO3demand_pool_number>0) then
-              alquimia_immobile_data(this%plantNO3demand_pool_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*this%chem_state%porosity)
+              alquimia_immobile_data(this%plantNO3demand_pool_number) = plantNdemand_l2e(c,j)/natomw/(molperL_to_molperm3)
               if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
                 alquimia_immobile_data(this%plantNO3demand_pool_number) = alquimia_immobile_data(this%plantNO3demand_pool_number)*no3_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
               alquimia_immobile_data(this%plantNO3demand_pool_number) = max(alquimia_immobile_data(this%plantNO3demand_pool_number),minval)
@@ -998,12 +999,12 @@ end subroutine EMAlquimia_Coldstart
                 ! Immobile: Convert from mol/m3 to gC/m3/s
                 hr_e2l(c,j) = hr_e2l(c,j) + alquimia_immobile_data(this%CO2_pool_number)*catomw
                 ! Mobile: convert from mol/L to gC/m3/s. mol/L*gC/mol*1000L/m3*porosity
-                hr_e2l(c,j) = hr_e2l(c,j) + alquimia_mobile_data(this%CO2_pool_number)*catomw*(1000.0*this%chem_state%porosity)
+                hr_e2l(c,j) = hr_e2l(c,j) + alquimia_mobile_data(this%CO2_pool_number)*catomw*(molperL_to_molperm3)
                 hr_e2l(c,j) = hr_e2l(c,j)/dt
               endif
               
-              if(this%NO3_pool_number>0) no3_e2l(c,j) = alquimia_mobile_data(this%NO3_pool_number)*natomw*(1000.0*this%chem_state%porosity)
-              if(this%NH4_pool_number>0) nh4_e2l(c,j) = alquimia_mobile_data(this%NH4_pool_number)*natomw*(1000.0*this%chem_state%porosity)
+              if(this%NO3_pool_number>0) no3_e2l(c,j) = alquimia_mobile_data(this%NO3_pool_number)*natomw*(molperL_to_molperm3)
+              if(this%NH4_pool_number>0) nh4_e2l(c,j) = alquimia_mobile_data(this%NH4_pool_number)*natomw*(molperL_to_molperm3)
 
               if(this%Nimm_pool_number>0) Nimm_e2l(c,j) = alquimia_immobile_data(this%Nimm_pool_number)*natomw/dt
               if(this%Nimp_pool_number>0) Nimp_e2l(c,j) = alquimia_immobile_data(this%Nimp_pool_number)*natomw/dt
@@ -1012,17 +1013,18 @@ end subroutine EMAlquimia_Coldstart
 
               ! PFLOTRAN may use an aqueous tracer to model plant N uptake if defining using Microbial reaction
               if(this%plantNO3uptake_pool_number>0) plantNO3uptake_e2l(c,j) = (alquimia_immobile_data(this%plantNO3uptake_pool_number)-minval)*natomw/dt + &
-                                                (alquimia_mobile_data(this%plantNO3uptake_pool_number)-minval)*natomw*(1000.0*this%chem_state%porosity)/dt
+                                                (alquimia_mobile_data(this%plantNO3uptake_pool_number)-minval)*natomw*(molperL_to_molperm3)/dt
                 if(this%plantNH4uptake_pool_number>0) plantNH4uptake_e2l(c,j) = (alquimia_immobile_data(this%plantNH4uptake_pool_number)-minval)*natomw/dt + &
-                                                (alquimia_mobile_data(this%plantNH4uptake_pool_number)-minval)*natomw*(1000.0*this%chem_state%porosity)/dt
+                                                (alquimia_mobile_data(this%plantNH4uptake_pool_number)-minval)*natomw*(molperL_to_molperm3)/dt
 
 
 
               ! Todo: Add C check
               ! Note: Generates errors if not multiplied by layer volume (imbalance on the order of 1e-8 gN/m3)
+              ! Note: Generates error after restart at precision of 1e-9. But doesn't set off N conservation errors in model when precision here is relaxed.
               if(abs(sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j)-&
-                        (sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)+plantNO3uptake_e2l(c,j)*dt+plantNH4uptake_e2l(c,j)*dt))*this%chem_properties%volume>1e-9) then
-                write(iulog,'(a,1x,i3,a,i4)'),'Nitrogen imbalance after alquimia solve step in layer',j,' Column ',c,__FILE__,__LINE__
+                        (sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)+plantNO3uptake_e2l(c,j)*dt+plantNH4uptake_e2l(c,j)*dt))*this%chem_properties%volume>1e-5) then
+                write(iulog,'(a,1x,i3,a,i5)'),'Nitrogen imbalance after alquimia solve step in layer',j,' Column ',c,__FILE__,__LINE__
                 call print_pools(this,c,j)
                 
                 write(iulog,'(a25,3e20.8)'),'Total N: ', sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j),&

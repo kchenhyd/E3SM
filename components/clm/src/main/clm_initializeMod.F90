@@ -29,7 +29,7 @@ module clm_initializeMod
   use TopounitDataType       , only : top_as, top_af, top_es
   use LandunitType           , only : lun_pp                
   use ColumnType             , only : col_pp
-  use ColumnDataType         , only : col_es  
+  use ColumnDataType         , only : col_es , col_ws 
   use VegetationType         , only : veg_pp
   use VegetationDataType     , only : veg_es  
 
@@ -938,7 +938,8 @@ contains
             chemstate_vars    = chemstate_vars            , &
             num_soilc         = filter(nc)%num_soilc                 , &
             filter_soilc      = filter(nc)%soilc              , &
-            col_es            = col_es)
+            col_es            = col_es               , &
+            col_ws            = col_ws        )
          end do
          !$OMP END PARALLEL DO
     endif

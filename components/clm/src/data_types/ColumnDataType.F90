@@ -6670,7 +6670,7 @@ contains
        this%somhr(c)              = 0._r8
        this%lithr(c)              = 0._r8
        this%decomp_cascade_hr(c,1:ndecomp_cascade_transitions)= 0._r8
-       if (.not. (use_pflotran .and. pf_cmode)) then
+       if (.not. ((use_pflotran .and. pf_cmode) .or. use_alquimia)) then
        ! pflotran has returned 'hr_vr(begc:endc,1:nlevdecomp)' to ALM before this subroutine is called in CNEcosystemDynNoLeaching2
        ! thus 'hr_vr_col' should NOT be set to 0
             this%hr_vr(c,1:nlevdecomp) = 0._r8
@@ -6717,7 +6717,7 @@ contains
     end do
 
     ! total heterotrophic respiration, vertically resolved (HR)
-
+    if(.not. use_alquimia) then ! hr_vr was already calculated in alquimia
     do k = 1, ndecomp_cascade_transitions
        do j = 1,nlevdecomp
           do fc = 1,num_soilc
@@ -6728,7 +6728,7 @@ contains
           end do
        end do
     end do
-
+    endif
     !----------------------------------------------------------------
     ! bgc interface & pflotran:
     !----------------------------------------------------------------
