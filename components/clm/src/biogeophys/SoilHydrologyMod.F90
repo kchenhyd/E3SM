@@ -997,6 +997,8 @@ contains
 ! Water table changes due to lateral flux between hommock and hollow in aquifer 
        do fc = 1, num_hydrologyc
            c = filter_hydrologyc(fc)
+
+           qflx_lat_aqu_layer(c,:) = 0.0
     
     ! use analytical expression for aquifer specific yield
              rous = watsat(c,nlevsoi) &
@@ -1034,7 +1036,6 @@ contains
                    qflx_lat_aqu_layer(c,j)=max(qflx_lat_aqu_layer(c,j),0._r8)
                    h2osoi_liq(c,j) = h2osoi_liq(c,j) + qflx_lat_aqu_layer(c,j)
                    qflx_lat_aqu_tot = qflx_lat_aqu_tot - qflx_lat_aqu_layer(c,j)
-   
                    !new code test DMR 4/29/13
                    if(s_y > 0._r8) zwt(c) = zwt(c) - qflx_lat_aqu_layer(c,j)/s_y/1000._r8
                    if (qflx_lat_aqu_tot <= 0.) then
@@ -1074,7 +1075,6 @@ contains
                    else
                       zwt(c) = zi(c,j)
                    endif
-   
                 enddo
                 if (qflx_lat_aqu_tot > 0.) zwt(c) = zwt(c) - qflx_lat_aqu_tot/1000._r8/rous
              endif
@@ -1579,6 +1579,31 @@ contains
                         - exp(-3._r8))/(1.0_r8-exp(-3._r8))
                    imped=(1._r8 - fracice_rsub(c))
                    rsub_top_max = 5.5e-3_r8
+   !Salinity and salt content
+#if (defined MARSH)
+         do j=1,nlevgrnd
+        write(iulog,*), 'sal', salinity(c,j)
+         salinity(2,j) = 35.0_r8
+        write(iulog,*), 'sal', salinity(c,j)
+            salt_content(c,j)=salinity(c,j)*h2osoi_liq(c,j)
+                if (c==1) then
+                  if (qflx_lat_aqu_layer(c,j) < 0.0_r8) then
+                     salt_content(c,j) = salt_content(c,j) + (salinity(c,j)*qflx_lat_aqu_layer(c,j))
+                  else if(qflx_lat_aqu_layer(c,j) >= 0.0_r8) then
+                     salt_content(c,j) = salt_content(c,j) + (35.0_r8*qflx_lat_aqu_layer(c,j))
+                  endif
+                  if(h2osoi_liq(c,j)>0) then
+                     salinity(c,j) = salt_content(1,j)/h2osoi_liq(c,j)
+                  else
+                     salinity(c,j) = 0.0
+                  endif
+                elseif (c==2) then
+                  salinity(c,j) = 35.0_r8
+                endif
+         write(iulog,*), c,j,'sal', salinity(c,j),'qflx',qflx_lat_aqu_layer(c,j)
+         enddo
+#endif
+
 #if (defined HUM_HOL || defined MARSH)                   
                    rsub_top_max = min(5.5e-3_r8, rsub_top_globalmax)
 #endif
@@ -1613,22 +1638,8 @@ contains
               rsub_top(c)    = deep_seep
             endif
           endif
+       senddo
 
-   !Salinity and salt content
- #if (defined MARSH)
-         do j=1,nlevgrnd
-         salinity(2,j) = 35.0_r8
-            salt_content(c,j)=salinity(c,j)*h2osoi_liq(c,j)
-                if (c .eq. 1 .and. qflx_lat_aqu_layer(c,j) < 0.0_r8) then
-                  salt_content(c,j) = salt_content(c,j) + (salinity(1,j)*qflx_lat_aqu_layer(1,j)*dtime)
-                  salinity(c,j) = salt_content(c,j)/h2osoi_liq(c,j)
-                elseif(c .eq. 1 .and. qflx_lat_aqu_layer(c,j) > 0.0_r8) then
-                  salt_content(c,j) = salt_content(c,j) + (salinity(2,j)*qflx_lat_aqu_layer(1,j)*dtime)
-                  salinity(c,j) = salt_content(c,j)/h2osoi_liq(c,j)
-               elseif(c .eq. 2) then
-                  salinity(c,j) = 35.0_r8
-                endif
-         enddo
 #else
 
 
