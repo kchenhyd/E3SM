@@ -937,12 +937,8 @@ contains
       do fc = 1, num_hydrologyc
          c = filter_hydrologyc(fc)
          nlevbed = nlev2bed(c)
-         qflx_adv(c,0) = qin(c,1) ! Layer zero is flow out of space above top layer, i.e. infiltration
          do j = 1, nlevbed
             qflx_adv(c,j) = qout(c,j)
-         enddo
-         do j = nlevbed+1, nlevgrnd
-            qflx_adv(c,j) = 0.0_r8
          enddo
       enddo
 
