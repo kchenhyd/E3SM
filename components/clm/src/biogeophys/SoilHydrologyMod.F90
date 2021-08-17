@@ -1287,6 +1287,7 @@ contains
      real(r8) :: rel_moist                ! relative moisture, temporary variable
      real(r8) :: wtsub_vic                ! summation of hk*dzmm for layers in the third VIC layer
      real(r8) :: deep_seep                ! Deep seepage for SPRUCE
+     real(r8) :: qflx_adv_tot(bounds%begc:bounds%endc,1:nlevgrnd)             ! amount of water transported between layers during a time step (mm)
 
      !-----------------------------------------------------------------------
 
@@ -1344,6 +1345,7 @@ contains
           qflx_lat_aqu_layer =>    col_wf%qflx_lat_aqu_layer   , & ! Output: [real(r8) (:,:) ] lateral flow for each layer
           salinity             =>    col_ws%salinity           , & ! Input:  [real(r8) (:,:)   ] salinity concentration (ppt)
           salt_content         =>    col_ws%salt_content       , & ! Input:  [real(r8) (:,:) ] mass of salt in soil later (g)
+          qflx_adv           =>     col_wf%qflx_adv            , & ! Input:  [real(r8) (:,:) ] vertical water flux between layers (mm/s)
 #endif
           h2osoi_ice         =>    col_ws%h2osoi_ice         & ! Output: [real(r8) (:,:) ] ice lens (kg/m2)   
           )
@@ -1582,25 +1584,42 @@ contains
    !Salinity and salt content
 #if (defined MARSH)
          do j=1,nlevgrnd
-        write(iulog,*), 'sal', salinity(c,j)
          salinity(2,j) = 35.0_r8
-        write(iulog,*), 'sal', salinity(c,j)
-            salt_content(c,j)=salinity(c,j)*h2osoi_liq(c,j)
-                if (c==1) then
+         salt_content(c,j)=salinity(c,j)*h2osoi_liq(c,j)
+         qflx_adv_tot(c,j) = qflx_adv(c,j)*dtime
+            if (c==1) then
+               if (abs(qflx_adv_tot(c,j)) > h2osoi_liq(c,j)) then
+                  qflx_adv_tot(c,j) = h2osoi_liq(c,j)
+               endif
+                  write(iulog,*), "qflx", qflx_adv_tot(c,j)
                   if (qflx_lat_aqu_layer(c,j) < 0.0_r8) then
-                     salt_content(c,j) = salt_content(c,j) + (salinity(c,j)*qflx_lat_aqu_layer(c,j))
-                  else if(qflx_lat_aqu_layer(c,j) >= 0.0_r8) then
-                     salt_content(c,j) = salt_content(c,j) + (35.0_r8*qflx_lat_aqu_layer(c,j))
+                     if (qflx_adv_tot(c,j) < 0.0_r8) then                      
+                        salt_content(c,j) = max(salt_content(c,j) + salinity(c,j)*qflx_lat_aqu_layer(c,j) &
+                        - salinity(c,j-1)*qflx_adv_tot(c,j-1) + salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
+                     elseif (qflx_adv_tot(c,j) >=0.0_r8) then
+                        salt_content(c,j) = max(salt_content(c,j) + salinity(c,j)*qflx_lat_aqu_layer(c,j) &
+                        + salinity(c,j+1)*qflx_adv_tot(c,j+1) - salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
+                     endif
+                  elseif (qflx_lat_aqu_layer(c,j) >= 0.0_r8) then
+                     if (qflx_adv_tot(c,j) < 0.0_r8) then
+                        salt_content(c,j) = max(salt_content(c,j) + salinity(2,j)*qflx_lat_aqu_layer(c,j) &
+                        - salinity(c,j-1)*qflx_adv_tot(c,j-1) + salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
+                     elseif (qflx_adv_tot(c,j) >=0.0_r8) then
+                        salt_content(c,j) = max(salt_content(c,j) + salinity(2,j)*qflx_lat_aqu_layer(c,j) &
+                        + salinity(c,j+1)*qflx_adv_tot(c,j+1) - salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
+                     endif
                   endif
-                  if(h2osoi_liq(c,j)>0) then
-                     salinity(c,j) = salt_content(1,j)/h2osoi_liq(c,j)
-                  else
-                     salinity(c,j) = 0.0
-                  endif
-                elseif (c==2) then
+               if(h2osoi_liq(c,j)>0.0_r8) then
+                  salinity(c,j) = salt_content(1,j)/h2osoi_liq(c,j)
+               else
+                  salinity(c,j) = 0.0
+               endif
+               write(iulog,*), "sal", salinity(c,j)
+            elseif (c==2) then
                   salinity(c,j) = 35.0_r8
-                endif
-         write(iulog,*), c,j,'sal', salinity(c,j),'qflx',qflx_lat_aqu_layer(c,j)
+
+            endif
+ 
          enddo
 #endif
 
