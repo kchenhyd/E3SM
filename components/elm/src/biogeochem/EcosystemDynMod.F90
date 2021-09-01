@@ -29,7 +29,7 @@ module EcosystemDynMod
   use ColumnDataType      , only : col_cf, c13_col_cf, c14_col_cf
   use ColumnDataType      , only : col_ns, col_nf
   use ColumnDataType      , only : col_ps, col_pf
-  use ColumnDataType      , only : col_es, col_ws
+  use ColumnDataType      , only : col_es, col_ws, col_wf
   use VegetationDataType  , only : veg_cs, c13_veg_cs, c14_veg_cs
   use VegetationDataType  , only : veg_cf, c13_veg_cf, c14_veg_cf
   use VegetationDataType  , only : veg_ns, veg_nf
@@ -571,7 +571,8 @@ contains
           num_soilc         = num_soilc                 , &
           filter_soilc      = filter_soilc              , &
           col_es            = col_es                    , &
-          col_ws            = col_ws                      )
+          col_ws            = col_ws                    , &
+          col_wf            = col_wf                      )
      
      call t_stopf('bgc via alquimia interface')
 

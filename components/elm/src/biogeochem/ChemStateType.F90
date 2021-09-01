@@ -173,7 +173,7 @@ module ChemStateType
 
         call restartvar(ncid=ncid, flag=flag, varname=nc_varname, xtype=ncd_double,   &
             dim1name='column', dim2name='levgrnd', switchdim=.true., &
-            long_name=var_longname, units='M', &
+            long_name=var_longname, units='mol/m^3', &
             interpinic_flag='interp', readvar=readvar, data=real2d)
 
         write(nc_varname,'(a,i2.2)') 'ALQUIMIA_IMMOBILE_',ii

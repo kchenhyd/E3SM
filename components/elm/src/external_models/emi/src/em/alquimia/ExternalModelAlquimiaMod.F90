@@ -26,6 +26,7 @@ module ExternalModelAlquimiaMod
   use EMI_CNCarbonFluxType_Constants
   use EMI_ChemStateType_Constants
   use EMI_ColumnWaterStateType_Constants
+  use EMI_ColumnWaterFluxType_Constants
 
 #ifdef USE_ALQUIMIA_LIB
    use AlquimiaContainers_module, only : AlquimiaSizes,AlquimiaProblemMetaData,AlquimiaProperties,&
@@ -63,6 +64,8 @@ module ExternalModelAlquimiaMod
     integer :: index_l2e_state_nh4
     integer :: index_l2e_state_no3
     integer :: index_l2e_flux_plantNdemand
+    integer :: index_l2e_flux_qflx_adv
+    integer :: index_l2e_flux_qflx_lat_aqu_layer
     
     ! Solve data returned to land model
     integer :: index_e2l_state_decomp_cpools
@@ -132,6 +135,7 @@ module ExternalModelAlquimiaMod
     integer                              :: plantNO3uptake_pool_number,plantNH4uptake_pool_number
     integer                              :: plantNO3demand_pool_number,plantNH4demand_pool_number
     integer                              :: plantNO3uptake_reaction_number,plantNH4uptake_reaction_number
+    logical, pointer, dimension(:)       :: is_dissolved_gas
     
    contains
      procedure, public :: Populate_L2E_Init_List  => EMAlquimia_Populate_L2E_Init_List
@@ -313,6 +317,15 @@ contains
     id                                             = L2E_STATE_AUX_INTS
     call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_l2e_aux_ints      = index
+
+    ! Water flow
+    id                                   = L2E_FLUX_SOIL_QFLX_ADV_COL
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_flux_qflx_adv      = index
+
+    id                                   = L2E_FLUX_SOIL_QFLX_LAT_COL
+    call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_l2e_flux_qflx_lat_aqu_layer      = index
 
 
 
@@ -530,6 +543,7 @@ contains
     this%carbon_pool_mapping   => NULL()
     this%nitrogen_pool_mapping => NULL()
     this%pool_reaction_mapping => NULL()
+    this%is_dissolved_gas      => NULL()
 
     ! Allocate memory for status container
     call AllocateAlquimiaEngineStatus(this%chem_status)
@@ -760,7 +774,7 @@ end subroutine EMAlquimia_Coldstart
     
     
     ! Local variables
-    integer                              :: c,fc,j,l,poolnum
+    integer                              :: c,fc,j,k,poolnum
     integer   , pointer                  :: filter_soilc(:)
     integer                              :: num_soilc
     integer                              :: max_cuts
@@ -780,10 +794,10 @@ end subroutine EMAlquimia_Coldstart
     real(r8) , pointer, dimension(:,:,:) :: cation_exchange_capacity_l2e , cation_exchange_capacity_e2l
     real(r8) , pointer, dimension(:,:,:) :: aux_doubles_l2e , aux_doubles_e2l
     integer  , pointer, dimension(:,:,:)   :: aux_ints_l2e, aux_ints_e2l
+    real(r8) , pointer, dimension(:,:)    :: qflx_adv_l2e, qflx_lat_aqu_l2e
     real(r8)                            :: CO2_before
-    real(r8)                            :: molperL_to_molperm3
     real(r8), parameter                 :: minval = 1.e-30_r8 ! Minimum value to pass to PFLOTRAN to avoid numerical errors with concentrations of 0
-    
+
     ! Setting these to the values in PFLOTRAN clm_rspfuncs.F90
     real(r8), parameter :: natomw = 14.0067d0 ! Value in clmvarcon is 14.007
     real(r8), parameter :: catomw = 12.0110d0 ! Value in clmvarcon is 12.011
@@ -791,7 +805,7 @@ end subroutine EMAlquimia_Coldstart
     character(kind=C_CHAR,len=kAlquimiaMaxStringLength) :: status_message
     procedure(ReactionStepOperatorSplit), pointer :: engine_ReactionStepOperatorSplit
     procedure(GetAuxiliaryOutput), pointer   :: engine_getAuxiliaryOutput
-    real (c_double), pointer :: alquimia_mobile_data(:), alquimia_immobile_data(:), alquimia_rates_data(:)
+    ! real (c_double), pointer :: alquimia_mobile_data(:), alquimia_immobile_data(:), alquimia_rates_data(:)
 
     ! write(iulog,*) 'Alquimia solving step!'
     
@@ -842,7 +856,7 @@ end subroutine EMAlquimia_Coldstart
     call l2e_list%GetPointerToReal2D(this%index_l2e_water_density, water_density_l2e)
     call e2l_list%GetPointerToReal2D(this%index_e2l_aqueous_pressure, aqueous_pressure_e2l)
     call l2e_list%GetPointerToReal2D(this%index_l2e_aqueous_pressure, aqueous_pressure_l2e)
-    call e2l_list%GetPointerToReal3D(this%index_e2l_total_mobile, total_mobile_e2l)
+    call e2l_list%GetPointerToReal3D(this%index_e2l_total_mobile, total_mobile_e2l) ! Note total mobile is stored as mol/m3 bulk and only converted to mol/L water when passed to/from alquimia
     call l2e_list%GetPointerToReal3D(this%index_l2e_total_mobile, total_mobile_l2e)
     call e2l_list%GetPointerToReal3D(this%index_e2l_total_immobile, total_immobile_e2l)
     call l2e_list%GetPointerToReal3D(this%index_l2e_total_immobile, total_immobile_l2e)
@@ -859,6 +873,8 @@ end subroutine EMAlquimia_Coldstart
     call e2l_list%GetPointerToInt3D(this%index_e2l_aux_ints, aux_ints_e2l)
     call l2e_list%GetPointerToInt3D(this%index_l2e_aux_ints, aux_ints_l2e)
 
+    call l2e_list%GetPointerToReal2D(this%index_l2e_flux_qflx_adv       , qflx_adv_l2e     )
+    call l2e_list%GetPointerToReal2D(this%index_l2e_flux_qflx_lat_aqu_layer       , qflx_lat_aqu_l2e     )
 
     ! First check if pools have been mapped between ELM and Alquimia
     if(.not. associated(this%carbon_pool_mapping)) then
@@ -869,27 +885,35 @@ end subroutine EMAlquimia_Coldstart
      ! TODO: Transport needs to be integrated somehow. 
     do fc = 1, num_soilc
       c = filter_soilc(fc)
+      ! Calculate rate of change due to transport for each mobile species
+      ! do k = 1, this%chem_sizes%num_primary
+      !   ! Need to 
+      !   !   1. set adv_flux (vertical flow)
+      !   !   2. Set diffusion coefficient as a function of moisture for each layer
+      !   !     2a. Calculate gas diffusion/equilibration for specific species. Or set high diffus for dissolved gases and skip the gas phase?
+      !   !     2b. Figure boundary condition for dissolved gases. Assume top layer is equil with atmosphere? Unless there is surface water?
+      !   !   3. Set source/sink for each layer using lateral transport/runoff and boundary condition for inputs
+      !   !   4. Figure out Strang splitting approach (half time step before then after chemistry)
+      !   !   5. Bubbles??
+      !   !
+      !   ! Maybe it makes more sense to run the whole column at the same time step. Move adv_diff into run_onestep and 
+      !   ! have it go back to the top of the column and run all layers over if there is a time step cut
+      !   call advection_diffusion(total_mobile_l2e(c,:,k),adv_flux(c,:),diffus(c,:),source(c,:),dt,transport_change_rate(:,k))
+      ! enddo
          do j = 1, nlevdecomp  
              ! First copy Alquimia data from ELM to alquimia data structure
-              call this%copy_ELM_to_Alquimia(c,j,water_density_l2e,&
-                                            aqueous_pressure_l2e,&
-                                            total_mobile_l2e,&
-                                            total_immobile_l2e,&
-                                            mineral_volume_fraction_l2e,&
-                                            mineral_specific_surface_area_l2e,&
-                                            surface_site_density_l2e,&
-                                            cation_exchange_capacity_l2e,&
-                                            aux_doubles_l2e,&
-                                            aux_ints_l2e) 
+              ! call this%copy_ELM_to_Alquimia(c,j,water_density_l2e,&
+              !                               aqueous_pressure_l2e,&
+              !                               total_mobile_l2e,&
+              !                               total_immobile_l2e,&
+              !                               mineral_volume_fraction_l2e,&
+              !                               mineral_specific_surface_area_l2e,&
+              !                               surface_site_density_l2e,&
+              !                               cation_exchange_capacity_l2e,&
+              !                               aux_doubles_l2e,&
+              !                               aux_ints_l2e) 
              
-            ! Update properties from ELM. Does it make more sense to put these in above subroutine call?
-             this%chem_state%porosity =    porosity_l2e(c,j)
-             this%chem_state%temperature = temperature(c,j) - 273.15
-             this%chem_properties%volume = dz(c,j)
-             this%chem_properties%saturation = max(h2o_liqvol(c,j)/porosity_l2e(c,j),0.01) ! Set minimum saturation to stop concentrations from blowing up at low soil moisture
-             
-             ! Conversion from aqueous Alquimia units (mol/L water) to ELM units (mol/m3 bulk)
-             molperL_to_molperm3 = 1000.0*this%chem_state%porosity*this%chem_properties%saturation
+
              ! Should we read aqueous pressure in from ELM?
              ! Set volume and saturation?
              ! Saturation determines volume of water and concentration of aqueous species
@@ -899,16 +923,16 @@ end subroutine EMAlquimia_Coldstart
              ! Should we check if we are in hands_on mode?
              ! Discussions with Peter, Fengming, Scott, Ethan suggested we should avoid setting rate constants this way and let PFLOTRAN handle it
              ! to make linking identical BGC with ATS or other models easier
-             call c_f_pointer(this%chem_properties%aqueous_kinetic_rate_cnst%data, alquimia_rates_data, (/this%chem_properties%aqueous_kinetic_rate_cnst%size/))
-             call c_f_pointer(this%chem_state%total_mobile%data, alquimia_mobile_data, (/this%chem_sizes%num_primary/))
-             call c_f_pointer(this%chem_state%total_immobile%data, alquimia_immobile_data, (/this%chem_sizes%num_primary/))
+            !  call c_f_pointer(this%chem_properties%aqueous_kinetic_rate_cnst%data, alquimia_rates_data, (/this%chem_properties%aqueous_kinetic_rate_cnst%size/))
+            !  call c_f_pointer(this%chem_state%total_mobile%data, alquimia_mobile_data, (/this%chem_sizes%num_primary/))
+            !  call c_f_pointer(this%chem_state%total_immobile%data, alquimia_immobile_data, (/this%chem_sizes%num_primary/))
 
-             do poolnum=1,ndecomp_pools
-               if(this%pool_reaction_mapping(poolnum)>0) then
-                !  write(iulog, '(a,i3,a,i3,1x,a,e12.3)'), 'Setting pool',poolnum,' -> alquimia reaction ',this%pool_reaction_mapping(poolnum),'kinetic rate const to',decomp_k(c,j,poolnum)
-                 alquimia_rates_data(this%pool_reaction_mapping(poolnum)) = decomp_k(c,j,poolnum)
-               endif
-             enddo
+            !  do poolnum=1,ndecomp_pools
+            !    if(this%pool_reaction_mapping(poolnum)>0) then
+            !     !  write(iulog, '(a,i3,a,i3,1x,a,e12.3)'), 'Setting pool',poolnum,' -> alquimia reaction ',this%pool_reaction_mapping(poolnum),'kinetic rate const to',decomp_k(c,j,poolnum)
+            !      alquimia_rates_data(this%pool_reaction_mapping(poolnum)) = decomp_k(c,j,poolnum)
+            !    endif
+            !  enddo
              
              
              ! Set soil carbon and nitrogen from land model
@@ -918,73 +942,89 @@ end subroutine EMAlquimia_Coldstart
             !  write(iulog,*),'Before solve'
              do poolnum=1,ndecomp_pools
                if(this%carbon_pool_mapping(poolnum)>0) &  
-                 alquimia_immobile_data(this%carbon_pool_mapping(poolnum)) = max(soilcarbon_l2e(c,j,poolnum)/catomw,minval)
+                 total_immobile_l2e(c,j,this%carbon_pool_mapping(poolnum)) = max(soilcarbon_l2e(c,j,poolnum)/catomw,minval)
                ! Separate N pool only exists if floating CN ratio
                 !  write(iulog,*),poolnum,soilnitrogen_l2e(c,j,poolnum)
                if(decomp_cascade_con%floating_cn_ratio_decomp_pools(poolnum) .and. this%nitrogen_pool_mapping(poolnum)>0) &
-                  alquimia_immobile_data(this%nitrogen_pool_mapping(poolnum)) = max(soilnitrogen_l2e(c,j,poolnum)/natomw,minval/20)
+                  total_immobile_l2e(c,j,this%nitrogen_pool_mapping(poolnum)) = max(soilnitrogen_l2e(c,j,poolnum)/natomw,minval/20)
              enddo
              
-             CO2_before = alquimia_immobile_data(this%CO2_pool_number)*catomw + &
-                          alquimia_mobile_data(this%CO2_pool_number)*catomw*(molperL_to_molperm3)
+             CO2_before = total_immobile_l2e(c,j,this%CO2_pool_number)*catomw + &
+                          total_mobile_l2e(c,j,this%CO2_pool_number)*catomw
 
              ! Copy dissolved nitrogen species. Units need to be converted from gN/m3 to M/L. Currently assuming saturated porosity
              
-             if(this%NO3_pool_number>0) alquimia_mobile_data(this%NO3_pool_number) = max(no3_l2e(c,j)/natomw/(molperL_to_molperm3),minval)
-             if(this%NH4_pool_number>0) alquimia_mobile_data(this%NH4_pool_number) = max(nh4_l2e(c,j)/natomw/(molperL_to_molperm3),minval)
+             if(this%NO3_pool_number>0) total_mobile_l2e(c,j,this%NO3_pool_number) = max(no3_l2e(c,j)/natomw,minval)
+             if(this%NH4_pool_number>0) total_mobile_l2e(c,j,this%NH4_pool_number) = max(nh4_l2e(c,j)/natomw,minval)
 
              ! Set rate constant based on plant N demand. Convert from gN/m3/s to mol/L/s
              ! Also scale rates by relative concentrations of NO3 and NH4 so total uptake doesn't exceed demand
              ! Assumes alquimia is running in hands-off mode: Biomass term of N uptake microbial reaction is set to plant NO3 or NH4 demand
              ! This assumes the rate constant of the reaction is set to 1 in the input deck!
             if(this%plantNH4demand_pool_number>0) then
-              alquimia_immobile_data(this%plantNH4demand_pool_number) = plantNdemand_l2e(c,j)/natomw/(molperL_to_molperm3)
+              total_immobile_l2e(c,j,this%plantNH4demand_pool_number) = plantNdemand_l2e(c,j)/natomw
               if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
-                  alquimia_immobile_data(this%plantNH4demand_pool_number) = alquimia_immobile_data(this%plantNH4demand_pool_number)*nh4_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
-              alquimia_immobile_data(this%plantNH4demand_pool_number) = max(alquimia_immobile_data(this%plantNH4demand_pool_number),minval)
+                  total_immobile_l2e(c,j,this%plantNH4demand_pool_number) = total_immobile_l2e(c,j,this%plantNH4demand_pool_number)*nh4_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
+              total_immobile_l2e(c,j,this%plantNH4demand_pool_number) = max(total_immobile_l2e(c,j,this%plantNH4demand_pool_number),minval)
             endif
             if(this%plantNO3demand_pool_number>0) then
-              alquimia_immobile_data(this%plantNO3demand_pool_number) = plantNdemand_l2e(c,j)/natomw/(molperL_to_molperm3)
+              total_immobile_l2e(c,j,this%plantNO3demand_pool_number) = plantNdemand_l2e(c,j)/natomw
               if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
-                alquimia_immobile_data(this%plantNO3demand_pool_number) = alquimia_immobile_data(this%plantNO3demand_pool_number)*no3_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
-              alquimia_immobile_data(this%plantNO3demand_pool_number) = max(alquimia_immobile_data(this%plantNO3demand_pool_number),minval)
+                total_immobile_l2e(c,j,this%plantNO3demand_pool_number) = total_immobile_l2e(c,j,this%plantNO3demand_pool_number)*no3_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
+              total_immobile_l2e(c,j,this%plantNO3demand_pool_number) = max(total_immobile_l2e(c,j,this%plantNO3demand_pool_number),minval)
             endif
 
            
             ! Reset diagnostic N immobilization, mineralization
-             if(this%Nimm_pool_number>0) alquimia_immobile_data(this%Nimm_pool_number) = minval
-             if(this%Nimp_pool_number>0) alquimia_immobile_data(this%Nimp_pool_number) = minval
-             if(this%Nmin_pool_number>0) alquimia_immobile_data(this%Nmin_pool_number) = minval
+             if(this%Nimm_pool_number>0) total_immobile_l2e(c,j,this%Nimm_pool_number) = minval
+             if(this%Nimp_pool_number>0) total_immobile_l2e(c,j,this%Nimp_pool_number) = minval
+             if(this%Nmin_pool_number>0) total_immobile_l2e(c,j,this%Nmin_pool_number) = minval
 
-             if(this%plantNO3uptake_pool_number>0) alquimia_immobile_data(this%plantNO3uptake_pool_number) = minval
-             if(this%plantNO3uptake_pool_number>0) alquimia_mobile_data(this%plantNO3uptake_pool_number) = minval
-             if(this%plantNH4uptake_pool_number>0) alquimia_immobile_data(this%plantNH4uptake_pool_number) = minval
-             if(this%plantNH4uptake_pool_number>0) alquimia_mobile_data(this%plantNH4uptake_pool_number) = minval
+             if(this%plantNO3uptake_pool_number>0) total_immobile_l2e(c,j,this%plantNO3uptake_pool_number) = minval
+             if(this%plantNO3uptake_pool_number>0) total_mobile_l2e(c,j,this%plantNO3uptake_pool_number) = minval
+             if(this%plantNH4uptake_pool_number>0) total_immobile_l2e(c,j,this%plantNH4uptake_pool_number) = minval
+             if(this%plantNH4uptake_pool_number>0) total_mobile_l2e(c,j,this%plantNH4uptake_pool_number) = minval
 
-              ! Step the chemistry solver, including timestep cutting capability
-              call run_onestep(this, c,j, dt,0,max_cuts)
+          enddo ! End of layer loop setting things up
+
+              ! Step the chemistry solver, including advection/diffusion and timestep cutting capability for whole column
+              call run_column_onestep(this, c, dt,0,max_cuts,&
+                  water_density_l2e,&
+                  aqueous_pressure_l2e,&
+                  total_mobile_l2e,&
+                  total_immobile_l2e,&
+                  mineral_volume_fraction_l2e,&
+                  mineral_specific_surface_area_l2e,&
+                  surface_site_density_l2e,&
+                  cation_exchange_capacity_l2e,&
+                  aux_doubles_l2e,&
+                  aux_ints_l2e,&
+                  porosity_l2e,temperature,dz,h2o_liqvol/porosity_l2e,qflx_adv_l2e,qflx_lat_aqu_l2e)
               if(max_cuts>3) write(iulog,'(a,i2,a,2i3)'),"Alquimia converged after",max_cuts," cuts",c,j
 
               ! Save back to ELM
-              call this%copy_Alquimia_to_ELM(c,j,water_density_e2l,&
-                                              aqueous_pressure_e2l,&
-                                              total_mobile_e2l,&
-                                              total_immobile_e2l,&
-                                              mineral_volume_fraction_e2l,&
-                                              mineral_specific_surface_area_e2l,&
-                                              surface_site_density_e2l,&
-                                              cation_exchange_capacity_e2l,&
-                                              aux_doubles_e2l,&
-                                              aux_ints_e2l) 
+              water_density_e2l                 = water_density_l2e
+              aqueous_pressure_e2l              = aqueous_pressure_l2e
+              total_mobile_e2l                  = total_mobile_l2e
+              total_immobile_e2l                = total_immobile_l2e
+              mineral_volume_fraction_e2l       = mineral_volume_fraction_l2e
+              mineral_specific_surface_area_e2l = mineral_specific_surface_area_l2e
+              surface_site_density_e2l          = surface_site_density_l2e
+              cation_exchange_capacity_e2l      = cation_exchange_capacity_l2e
+              aux_doubles_e2l                   = aux_doubles_l2e
+              aux_ints_e2l                      = aux_ints_l2e
+
+          ! Loop through layers after solve and update ELM values
+          do j=1,nlevdecomp
 
               ! Set updated land model values. Should this be moved into copy subroutine?
               ! Convert from mol/m3 to gC/m2
               do poolnum=1,ndecomp_pools
                 if(this%carbon_pool_mapping(poolnum)>0) &
-                  soilcarbon_e2l(c,j,poolnum) = alquimia_immobile_data(this%carbon_pool_mapping(poolnum))*catomw
+                  soilcarbon_e2l(c,j,poolnum) = total_immobile_e2l(c,j,this%carbon_pool_mapping(poolnum))*catomw
                 ! Separate N pool only exists if floating CN ratio
                 if(decomp_cascade_con%floating_cn_ratio_decomp_pools(poolnum) .and. this%nitrogen_pool_mapping(poolnum)>0) then
-                   soilnitrogen_e2l(c,j,poolnum) = alquimia_immobile_data(this%nitrogen_pool_mapping(poolnum))*natomw
+                   soilnitrogen_e2l(c,j,poolnum) = total_immobile_e2l(c,j,this%nitrogen_pool_mapping(poolnum))*natomw
                  elseif (this%carbon_pool_mapping(poolnum)>0) then
                    ! Calculate from CN ratio and C pool
                    soilnitrogen_e2l(c,j,poolnum) = soilcarbon_e2l(c,j,poolnum)/decomp_cascade_con%initial_cn_ratio(poolnum)
@@ -997,25 +1037,25 @@ end subroutine EMAlquimia_Coldstart
               if(this%CO2_pool_number>0) then 
                 hr_e2l(c,j) = - CO2_before
                 ! Immobile: Convert from mol/m3 to gC/m3/s
-                hr_e2l(c,j) = hr_e2l(c,j) + alquimia_immobile_data(this%CO2_pool_number)*catomw
+                hr_e2l(c,j) = hr_e2l(c,j) + total_immobile_e2l(c,j,this%CO2_pool_number)*catomw
                 ! Mobile: convert from mol/L to gC/m3/s. mol/L*gC/mol*1000L/m3*porosity
-                hr_e2l(c,j) = hr_e2l(c,j) + alquimia_mobile_data(this%CO2_pool_number)*catomw*(molperL_to_molperm3)
+                hr_e2l(c,j) = hr_e2l(c,j) + total_mobile_e2l(c,j,this%CO2_pool_number)*catomw
                 hr_e2l(c,j) = hr_e2l(c,j)/dt
               endif
               
-              if(this%NO3_pool_number>0) no3_e2l(c,j) = alquimia_mobile_data(this%NO3_pool_number)*natomw*(molperL_to_molperm3)
-              if(this%NH4_pool_number>0) nh4_e2l(c,j) = alquimia_mobile_data(this%NH4_pool_number)*natomw*(molperL_to_molperm3)
+              if(this%NO3_pool_number>0) no3_e2l(c,j) = total_mobile_e2l(c,j,this%NO3_pool_number)*natomw
+              if(this%NH4_pool_number>0) nh4_e2l(c,j) = total_mobile_e2l(c,j,this%NH4_pool_number)*natomw
 
-              if(this%Nimm_pool_number>0) Nimm_e2l(c,j) = alquimia_immobile_data(this%Nimm_pool_number)*natomw/dt
-              if(this%Nimp_pool_number>0) Nimp_e2l(c,j) = alquimia_immobile_data(this%Nimp_pool_number)*natomw/dt
+              if(this%Nimm_pool_number>0) Nimm_e2l(c,j) = total_immobile_e2l(c,j,this%Nimm_pool_number)*natomw/dt
+              if(this%Nimp_pool_number>0) Nimp_e2l(c,j) = total_immobile_e2l(c,j,this%Nimp_pool_number)*natomw/dt
               ! Nmin will be added to the NH4 pool elsewhere in ELM so skip that for now
               ! if(this%Nmin_pool_number>0) Nmin_e2l(c,j) = alquimia_immobile_data(this%Nmin_pool_number)*natomw/dt
 
               ! PFLOTRAN may use an aqueous tracer to model plant N uptake if defining using Microbial reaction
-              if(this%plantNO3uptake_pool_number>0) plantNO3uptake_e2l(c,j) = (alquimia_immobile_data(this%plantNO3uptake_pool_number)-minval)*natomw/dt + &
-                                                (alquimia_mobile_data(this%plantNO3uptake_pool_number)-minval)*natomw*(molperL_to_molperm3)/dt
-                if(this%plantNH4uptake_pool_number>0) plantNH4uptake_e2l(c,j) = (alquimia_immobile_data(this%plantNH4uptake_pool_number)-minval)*natomw/dt + &
-                                                (alquimia_mobile_data(this%plantNH4uptake_pool_number)-minval)*natomw*(molperL_to_molperm3)/dt
+              if(this%plantNO3uptake_pool_number>0) plantNO3uptake_e2l(c,j) = (total_immobile_e2l(c,j,this%plantNO3uptake_pool_number)-minval)*natomw/dt + &
+                                                (total_mobile_e2l(c,j,this%plantNO3uptake_pool_number)-minval)*natomw/dt
+                if(this%plantNH4uptake_pool_number>0) plantNH4uptake_e2l(c,j) = (total_immobile_e2l(c,j,this%plantNH4uptake_pool_number)-minval)*natomw/dt + &
+                                                (total_mobile_e2l(c,j,this%plantNH4uptake_pool_number)-minval)*natomw/dt
 
 
 
@@ -1023,7 +1063,7 @@ end subroutine EMAlquimia_Coldstart
               ! Note: Generates errors if not multiplied by layer volume (imbalance on the order of 1e-8 gN/m3)
               ! Note: Generates error after restart at precision of 1e-9. But doesn't set off N conservation errors in model when precision here is relaxed.
               if(abs(sum(soilnitrogen_l2e(c,j,:))+no3_l2e(c,j)+nh4_l2e(c,j)-&
-                        (sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)+plantNO3uptake_e2l(c,j)*dt+plantNH4uptake_e2l(c,j)*dt))*this%chem_properties%volume>1e-5) then
+                        (sum(soilnitrogen_e2l(c,j,:))+no3_e2l(c,j)+nh4_e2l(c,j)+plantNO3uptake_e2l(c,j)*dt+plantNH4uptake_e2l(c,j)*dt))*dz(c,j)>1e-5) then
                 write(iulog,'(a,1x,i3,a,i5)'),'Nitrogen imbalance after alquimia solve step in layer',j,' Column ',c,__FILE__,__LINE__
                 call print_pools(this,c,j)
                 
@@ -1082,21 +1122,26 @@ end subroutine EMAlquimia_Coldstart
     class(em_alquimia_type)              :: this
     integer                              :: c,j ! Column, layer
     ! Pointer arrays that were previously mapped using EMI
-    real(r8), pointer :: water_density(:,:), aqueous_pressure(:,:)
-    real(r8), pointer :: total_mobile(:,:,:), total_immobile(:,:,:)
-    real(r8), pointer :: mineral_volume_fraction(:,:,:), mineral_specific_surface_area(:,:,:)
-    real(r8), pointer :: surface_site_density(:,:,:), cation_exchange_capacity(:,:,:), aux_doubles(:,:,:)
-    integer , pointer :: aux_ints(:,:,:)
+    real(r8) :: water_density(:,:), aqueous_pressure(:,:)
+    real(r8) :: total_mobile(:,:,:), total_immobile(:,:,:)
+    real(r8) :: mineral_volume_fraction(:,:,:), mineral_specific_surface_area(:,:,:)
+    real(r8) :: surface_site_density(:,:,:), cation_exchange_capacity(:,:,:), aux_doubles(:,:,:)
+    integer  :: aux_ints(:,:,:)
 
     real (c_double), pointer :: alquimia_data(:)
     integer (c_int)   , pointer :: alquimia_int_data(:)
+    real(r8) :: molperL_to_molperm3
 
     water_density(c,j) = this%chem_state%water_density
     aqueous_pressure(c,j) = this%chem_state%aqueous_pressure
 
+    ! We will store mobile concentrations as  mol/m3 bulk on ELM side and mol/L on alquimia side
+    ! This is so changes in layer water content across time steps are properly reflected in concentrations
+    molperL_to_molperm3 = 1000.0*this%chem_state%porosity*this%chem_properties%saturation
+
     ! c_f_pointer just points an array to the right data, so it needs to be actually copied
     call c_f_pointer(this%chem_state%total_mobile%data, alquimia_data, (/this%chem_sizes%num_primary/))
-    total_mobile(c,j,1:this%chem_sizes%num_primary)   = alquimia_data(1:this%chem_sizes%num_primary)
+    total_mobile(c,j,1:this%chem_sizes%num_primary)   = alquimia_data(1:this%chem_sizes%num_primary)*molperL_to_molperm3
     call c_f_pointer(this%chem_state%total_immobile%data, alquimia_data, (/this%chem_sizes%num_primary/))
     total_immobile(c,j,1:this%chem_sizes%num_primary)   = alquimia_data(1:this%chem_sizes%num_primary)
     call c_f_pointer(this%chem_state%mineral_volume_fraction%data, alquimia_data, (/this%chem_sizes%num_minerals/))
@@ -1133,21 +1178,27 @@ end subroutine EMAlquimia_Coldstart
     class(em_alquimia_type)              :: this
     integer                              :: c,j ! Column, layer
     ! Pointer arrays that were previously mapped using EMI
-    real(r8), pointer :: water_density(:,:), aqueous_pressure(:,:)
-    real(r8), pointer :: total_mobile(:,:,:), total_immobile(:,:,:)
-    real(r8), pointer :: mineral_volume_fraction(:,:,:), mineral_specific_surface_area(:,:,:)
-    real(r8), pointer :: surface_site_density(:,:,:), cation_exchange_capacity(:,:,:), aux_doubles(:,:,:)
-    integer , pointer :: aux_ints(:,:,:)
+    real(r8) :: water_density(:,:), aqueous_pressure(:,:)
+    real(r8) :: total_mobile(:,:,:), total_immobile(:,:,:)
+    real(r8) :: mineral_volume_fraction(:,:,:), mineral_specific_surface_area(:,:,:)
+    real(r8) :: surface_site_density(:,:,:), cation_exchange_capacity(:,:,:), aux_doubles(:,:,:)
+    integer  :: aux_ints(:,:,:)
 
     real (c_double), pointer :: alquimia_data(:)
     integer (c_int)   , pointer :: alquimia_int_data(:)
 
+    real(r8) :: molperL_to_molperm3
+
     this%chem_state%water_density = water_density(c,j)
     this%chem_state%aqueous_pressure = aqueous_pressure(c,j)
 
+    ! We will store mobile concentrations as  mol/m3 bulk on ELM side and mol/L on alquimia side
+    ! This is so changes in layer water content across time steps are properly reflected in concentrations
+    molperL_to_molperm3 = 1000.0*this%chem_state%porosity*this%chem_properties%saturation
+
     ! c_f_pointer just points an array to the right data, so it needs to be actually copied
     call c_f_pointer(this%chem_state%total_mobile%data, alquimia_data, (/this%chem_sizes%num_primary/))
-    alquimia_data(1:this%chem_sizes%num_primary) = total_mobile(c,j,1:this%chem_sizes%num_primary)
+    alquimia_data(1:this%chem_sizes%num_primary) = total_mobile(c,j,1:this%chem_sizes%num_primary)/molperL_to_molperm3
     call c_f_pointer(this%chem_state%total_immobile%data, alquimia_data, (/this%chem_sizes%num_primary/))
     alquimia_data(1:this%chem_sizes%num_primary) = total_immobile(c,j,1:this%chem_sizes%num_primary)
     call c_f_pointer(this%chem_state%mineral_volume_fraction%data, alquimia_data, (/this%chem_sizes%num_minerals/))
@@ -1374,6 +1425,27 @@ end subroutine EMAlquimia_Coldstart
     else
       write(iulog,'(a,1x,a)'),'WARNING: No match for plant NO3- uptake reaction',trim(alq_poolname)
     endif
+
+    ! Find aqueous gas pools
+    allocate(this%is_dissolved_gas(this%chem_sizes%num_primary))
+    this%is_dissolved_gas(:) = .FALSE.
+    call c_f_pointer(this%chem_metadata%primary_names%data, name_list, (/this%chem_sizes%num_primary/))
+    do ii=1, this%chem_sizes%num_primary
+      call c_f_string_ptr(name_list(ii),alq_poolname)
+      if((trim(alq_poolname) == 'CO2(aq)') .or. &
+         (trim(alq_poolname) == 'HCO3-') .or. & ! This one might be tricky because of pH balance?
+         (trim(alq_poolname) == 'CH4(aq)') .or. &
+         (trim(alq_poolname) == 'O2(aq)')  .or. &
+         (trim(alq_poolname) == 'H2S(aq)')  .or. &
+         (trim(alq_poolname) == 'N2(aq)')  .or. &
+         (trim(alq_poolname) == 'N2O(aq)')  .or. &
+         (trim(alq_poolname) == 'H2(aq)')  ) then
+        this%is_dissolved_gas(ii) = .TRUE.
+
+      endif
+    enddo
+    pool_num = find_alquimia_pool('CO2(aq)',name_list,this%chem_sizes%num_primary)
+
   end subroutine map_alquimia_pools
 
   
@@ -1560,7 +1632,448 @@ end subroutine EMAlquimia_Coldstart
       
 
   end subroutine run_onestep
+
+  recursive subroutine run_column_onestep(this,c,dt,num_cuts,max_cuts, &
+          water_density,&
+          aqueous_pressure,&
+          total_mobile,&
+          total_immobile,&
+          mineral_volume_fraction,&
+          mineral_specific_surface_area,&
+          surface_site_density,&
+          cation_exchange_capacity,&
+          aux_doubles,&
+          aux_ints,&
+          porosity,temperature,volume,saturation,adv_flux,lat_flux)
+    
+  use c_f_interface_module, only : c_f_string_ptr
+  use clm_varpar       , only : nlevdecomp
+  
+  implicit none
+  
+  class(em_alquimia_type)              :: this
+  integer,intent(out)                  :: max_cuts
+  integer,intent(in)                   :: num_cuts,c
+  real(r8),intent(in)                  :: dt
+  real(r8),intent(inout),pointer       :: water_density(:,:),&
+                                          aqueous_pressure(:,:),&
+                                          total_mobile(:,:,:),&
+                                          total_immobile(:,:,:),&
+                                          mineral_volume_fraction(:,:,:),&
+                                          mineral_specific_surface_area(:,:,:),&
+                                          surface_site_density(:,:,:),&
+                                          cation_exchange_capacity(:,:,:),&
+                                          aux_doubles(:,:,:)
+  integer,intent(inout)   ,pointer     :: aux_ints(:,:,:)
+  real(r8),intent(in),dimension(:,:)  :: porosity,temperature,volume,saturation,adv_flux,lat_flux
+
+    real(r8)             :: water_density_tmp(1,nlevdecomp),&
+                            aqueous_pressure_tmp(1,nlevdecomp),&
+                            total_mobile_tmp(1,nlevdecomp,this%chem_sizes%num_primary),&
+                            total_immobile_tmp(1,nlevdecomp,this%chem_sizes%num_primary),&
+                            mineral_volume_fraction_tmp(1,nlevdecomp,this%chem_sizes%num_minerals),&
+                            mineral_specific_surface_area_tmp(1,nlevdecomp,this%chem_sizes%num_minerals),&
+                            surface_site_density_tmp(1,nlevdecomp,this%chem_sizes%num_surface_sites),&
+                            cation_exchange_capacity_tmp(1,nlevdecomp,this%chem_sizes%num_ion_exchange_sites),&
+                            aux_doubles_tmp(1,nlevdecomp,this%chem_sizes%num_aux_doubles)
+    integer            ::   aux_ints_tmp(1,nlevdecomp,this%chem_sizes%num_aux_integers)
+    real(r8) :: diffus(nlevdecomp)
+    real(r8) :: transport_change_rate(nlevdecomp,this%chem_sizes%num_primary)
+  
+  real(r8) :: actual_dt,porosity_tmp
+  character(512) :: msg
+  character(kind=C_CHAR,len=kAlquimiaMaxStringLength) :: status_message
+  integer :: ncuts2,ncuts,ii,j,k
+  
+  max_cuts = num_cuts
+  actual_dt = dt/(2**num_cuts)
+  
+  ncuts=0
+  ncuts2=0
+
+  do k=1,this%chem_sizes%num_primary
+    ! Set diffusion coefficient depending on saturation and whether species is aqueous gas or not
+    ! Need to set boundary condition concentrations for adv flux (top layer infiltration) and lateral flux (source)
+    
+    ! Assume diffusion through water according to Wright (1990)
+    ! In that paper diffus_water = 0.000025 cm2/s
+    do j=1,nlevdecomp
+      diffus(j) = 2.5e-9_r8*0.005_r8*exp(10.0_r8*saturation(c,j)*porosity(c,j))
+    enddo
+    
+    if(this%is_dissolved_gas(k)) then
+      ! For gases, diffusion rates are set using gas diffusive transport (Meslin et al., SSSAJ, 2010. doi:10.2136/sssaj2009.0474)
+      ! Estimating gas diffusion coefficient of 0.2 cm2/s and dry soil diffusion coefficient of 30% of gas (Moldrup et al 2004, SSSAJ)
+      do j=1,nlevdecomp
+        diffus(j) = diffus(j) + 2.0e-5_r8*0.3_r8*(1.0_r8 - min(saturation(c,j),1.0))**2.5
+      enddo
+    ! Should I add a virtual top layer that represents the atmospheric/surface water boundary condition? 
+    ! Or just equilibrate top layer of dissolved gases w.r.t. upper BC?
+    ! Need an output variable to report the fluxes at the top boundary
+    endif
+    ! At this point, total_mobile is stored as mol/m3 bulk (ELM side). Dividing by porosity*saturation converts to mol/m3 water
+    call advection_diffusion(total_mobile(c,:,k)/(porosity(c,:)*saturation(c,:)),adv_flux(c,:),diffus(:),lat_flux(c,:),actual_dt/2,transport_change_rate(:,k))
+    ! At this point perhaps we should go through and re-equilibrate dissolved gases in top layer if unsaturated?
+
+  ! Here need to convert back from mol/m3 water to mol/m3 bulk
+    total_mobile(c,:,k) = total_mobile(c,:,k) + transport_change_rate(:,k)*porosity(c,:)*saturation(c,:)*actual_dt/2
+  enddo
+
+
+
+  do j=1,nlevdecomp
+
+    ! Update properties from ELM
+    this%chem_state%porosity =    porosity(c,j)
+    this%chem_state%temperature = temperature(c,j) - 273.15
+    this%chem_properties%volume = volume(c,j)
+    this%chem_properties%saturation = max(min(saturation(c,j),1.0),0.01) ! Set minimum saturation to stop concentrations from blowing up at low soil moisture
+    
+    call this%copy_ELM_to_Alquimia(c,j,water_density,&
+          aqueous_pressure,&
+          total_mobile,&
+          total_immobile,&
+          mineral_volume_fraction,&
+          mineral_specific_surface_area,&
+          surface_site_density,&
+          cation_exchange_capacity,&
+          aux_doubles,&
+          aux_ints) 
+
+
+    porosity_tmp=this%chem_state%porosity
+    call this%chem%ReactionStepOperatorSplit(this%chem_engine, actual_dt, this%chem_properties, this%chem_state, &
+                                         this%chem_aux_data, this%chem_status)
+    ! Reset porosity because Pflotran tends to mess it up
+    this%chem_state%porosity=porosity_tmp
+
+    if (this%chem_status%converged) then
+      ! Success. Can get aux output and finish execution of the subroutine
+      ! Get auxiliary output
+      call this%chem%getAuxiliaryOutput(this%chem_engine, this%chem_properties, this%chem_state, &
+                                  this%chem_aux_data, this%chem_aux_output, this%chem_status)
+      if(this%chem_status%error /= 0) then
+        call c_f_string_ptr(this%chem_status%message,status_message)
+        call endrun(msg='Alquimia error in ReactionStepOperatorSplit: '//status_message)
+      endif
+      ! Copy back to column structure
+      call this%copy_Alquimia_to_ELM(c,j,water_density_tmp,&
+        aqueous_pressure_tmp,&
+        total_mobile_tmp,&
+        total_immobile_tmp,&
+        mineral_volume_fraction_tmp,&
+        mineral_specific_surface_area_tmp,&
+        surface_site_density_tmp,&
+        cation_exchange_capacity_tmp,&
+        aux_doubles_tmp,&
+        aux_ints_tmp) 
+      
+    else ! Solve did not converge. Cut timestep, and bail out if too short
+      if(actual_dt/2 < min_dt) then
+        call c_f_string_ptr(this%chem_status%message,status_message)
+        write(msg,'(a,i3,a,f5.2,a,i4,a,i3,a,i5)') "Error: Alquimia ReactionStepOperatorSplit failed to converge after ",num_cuts," cuts to dt = ",actual_dt,' s. Newton iterations = ',this%chem_status%num_newton_iterations,' Layer = ',j," Col = ",c
+        call print_pools(this,c,j)
+        call endrun(msg=msg)
+      else
+        exit ! Drop out of the layer loop to start over at shorter time step
+      endif
+    endif
+    enddo ! Layer loop
+
+    if(.not. this%chem_status%converged) then
+        ! If we are not at minimum timestep yet, cut and keep going
+    
+        ! Here we are basically throwing out all the _tmp array values and starting over with the originals
+
+        ! Also need to undo transport because we are starting this time step over
+        total_mobile(c,:,:) = total_mobile(c,:,:) - transport_change_rate(:,:)*actual_dt/2
+
+        ! Need to run the step two times because we have cut the timestep in half
+        call run_column_onestep(this, c, dt,num_cuts+1,ncuts,&
+          water_density,&
+          aqueous_pressure,&
+          total_mobile,&
+          total_immobile,&
+          mineral_volume_fraction,&
+          mineral_specific_surface_area,&
+          surface_site_density,&
+          cation_exchange_capacity,&
+          aux_doubles,&
+          aux_ints,porosity,temperature,volume,saturation,adv_flux,lat_flux)
+
+        if(ncuts>max_cuts) max_cuts=ncuts
+        ! write(iulog,*),'Converged =',this%chem_status%converged,"ncuts =",ncuts,'(Substep 1)'
+        
+        ! The second one starts from the maximum number of cuts from the first one so it doesn't waste time retrying a bunch of failed timestep lengths
+        do ii=1,2**(max_cuts-(num_cuts+1))
+          call run_column_onestep(this, c, dt,ncuts,ncuts2,&
+          water_density,&
+          aqueous_pressure,&
+          total_mobile,&
+          total_immobile,&
+          mineral_volume_fraction,&
+          mineral_specific_surface_area,&
+          surface_site_density,&
+          cation_exchange_capacity,&
+          aux_doubles,&
+          aux_ints,porosity,temperature,volume,saturation,adv_flux,lat_flux)
+          if(ncuts2>max_cuts) max_cuts=ncuts2
+        !   write(iulog,*),'Converged =',this%chem_status%converged,"ncuts =",ncuts2,'. Substep 2 +',ii
+        enddo
+        ! call run_onestep(this, c,j, dt,num_cuts+1,ncuts)
+        ! if(ncuts>max_cuts) max_cuts=ncuts
+        ! write(iulog,*),'Converged =',this%chem_status%converged,"ncuts =",ncuts,'(Substep 2)'
+    endif
+
+    ! At this point we've successfully updated the column chemistry for all layers. Copy back to inout arrays
+    water_density(c,:) = water_density_tmp(1,:)
+    aqueous_pressure(c,:) = aqueous_pressure_tmp(1,:)
+    total_mobile(c,:,:) = total_mobile_tmp(1,:,:)
+    total_immobile(c,:,:) = total_immobile_tmp(1,:,:)
+    mineral_volume_fraction(c,:,:) = mineral_volume_fraction_tmp(1,:,:)
+    mineral_specific_surface_area(c,:,:) = mineral_specific_surface_area_tmp(1,:,:)
+    surface_site_density(c,:,:) = surface_site_density_tmp(1,:,:)
+    cation_exchange_capacity(c,:,:) = cation_exchange_capacity_tmp(1,:,:)
+    aux_doubles(c,:,:) = aux_doubles_tmp(1,:,:)
+    aux_ints(c,:,:) = aux_ints_tmp(1,:,:)
+      
+    ! Second half of transport (Strang splitting)
+
+    do k=1,this%chem_sizes%num_primary
+      ! Set diffusion coefficient depending on saturation and whether species is aqueous gas or not
+      ! Need to set boundary condition concentrations for adv flux (top layer infiltration) and lateral flux (source)
+      
+      ! Assume diffusion through water according to Wright (1990)
+      ! In that paper diffus_water = 0.000025 cm2/s
+      do j=1,nlevdecomp
+        diffus(j) = 2.5e-9_r8*0.005_r8*exp(10.0_r8*saturation(c,j)*porosity(c,j))
+      enddo
+      
+      if(this%is_dissolved_gas(k)) then
+        ! For gases, diffusion rates are set using gas diffusive transport (Meslin et al., SSSAJ, 2010. doi:10.2136/sssaj2009.0474)
+        ! Estimating gas diffusion coefficient of 0.2 cm2/s and dry soil diffusion coefficient of 30% of gas (Moldrup et al 2004, SSSAJ)
+        do j=1,nlevdecomp
+          diffus(j) = diffus(j) + 2.0e-5_r8*0.3_r8*(1.0_r8 - min(saturation(c,j),1.0))**2.5
+        enddo
+      ! Should I add a virtual top layer that represents the atmospheric/surface water boundary condition? 
+      ! Or just equilibrate top layer of dissolved gases w.r.t. upper BC?
+      ! Need an output variable to report the fluxes at the top boundary
+      endif
+      ! At this point, total_mobile is stored as mol/m3 bulk (ELM side). Dividing by porosity*saturation converts to mol/m3 water
+      ! But does this mess up assumptions for dissolved gases? Those should be moving through air-filled porosity. Maybe it needs to be a two step process
+      call advection_diffusion(total_mobile(c,:,k)/(porosity(c,:)*saturation(c,:)),adv_flux(c,:),diffus(:),lat_flux(c,:),actual_dt/2,transport_change_rate(:,k))
+      ! At this point perhaps we should go through and equilibrate dissolved gases in top layer if unsaturated?
+
+    ! Here need to convert back from mol/m3 water to mol/m3 bulk
+      total_mobile(c,:,k) = total_mobile(c,:,k) + transport_change_rate(:,k)*porosity(c,:)*saturation(c,:)*actual_dt/2
+    enddo
+
+
+end subroutine run_column_onestep
   
 #endif
+
+! Should make sure this is available when alquimia is turned off/not compiled in case we want to track e.g. salinity without BGC
+subroutine advection_diffusion(conc_trcr,adv_flux,diffus,source,dtime,conc_change_rate)
+  ! Advection and diffusion for a single tracer in one column given diffusion coefficient, flow, and source-sink terms
+  ! Based on SoilLittVertTranspMod, which implements S. V. Patankar, Numerical Heat Transfer and Fluid Flow, Series in Computational Methods in Mechanics and Thermal Sciences, Hemisphere Publishing Corp., 1980. Chapter 5
+  ! Not sure if this belongs here or somewhere else. Is it bad to do this in the EMI subroutine?
+
+  use clm_varpar       , only : nlevdecomp
+  use clm_varcon       , only : zsoi, zisoi, dzsoi_decomp
+
+  real(r8), intent(in) :: conc_trcr(1:nlevdecomp) ! Bulk concentration (e.g. mol/m3). Or should it be concentration in water??
+  real(r8), intent(in) :: adv_flux(1:nlevdecomp+1)    ! (m/s), vertical into layer
+  real(r8), intent(in) :: diffus(1:nlevdecomp+1)  ! diffusivity (m2/s)
+  real(r8), intent(in) :: source(1:nlevdecomp+1)  ! Source term (mol/m3/s)
+  real(r8), intent(in) :: dtime                   ! Time step (s)
+  real(r8), intent(out):: conc_change_rate(0:nlevdecomp+1) ! Bulk concentration (e.g. mol/m3/s). Or should it be concentration in water??
+
+  ! Local variables
+  real(r8) :: aaa                                                ! "A" function in Patankar
+  real(r8) :: pe                                                 ! Pe for "A" function in Patankar
+  real(r8) :: w_m1, w_p1                                         ! Weights for calculating harmonic mean of diffusivity
+  real(r8) :: d_m1, d_p1                                         ! Harmonic mean of diffusivity
+  real(r8) :: a_tri(0:nlevdecomp+1)      ! "a" vector for tridiagonal matrix
+  real(r8) :: b_tri(0:nlevdecomp+1)      ! "b" vector for tridiagonal matrix
+  real(r8) :: c_tri(0:nlevdecomp+1)      ! "c" vector for tridiagonal matrix
+  real(r8) :: r_tri(0:nlevdecomp+1)      ! "r" vector for tridiagonal solution
+  real(r8) :: d_p1_zp1(1:nlevdecomp+1)   ! diffusivity/delta_z for next j  (set to zero for no diffusion)
+  real(r8) :: d_m1_zm1(1:nlevdecomp+1)   ! diffusivity/delta_z for previous j (set to zero for no diffusion)
+  real(r8) :: f_p1(1:nlevdecomp+1)       ! water flux for next j
+  real(r8) :: f_m1(1:nlevdecomp+1)       ! water flux for previous j
+  real(r8) :: pe_p1(1:nlevdecomp+1)      ! Peclet # for next j
+  real(r8) :: pe_m1(1:nlevdecomp+1)      ! Peclet # for previous j
+  real(r8) :: dz_node(1:nlevdecomp+1)                            ! difference between nodes
+  real(r8) :: a_p_0
+  real(r8) :: conc_after(0:nlevdecomp+1)
+  
+  integer :: j
+  
+  ! Statement function
+  aaa (pe) = max (0._r8, (1._r8 - 0.1_r8 * abs(pe))**5)  ! "A" function from Patankar, Table 5.2, pg 95
+
+  ! Set the distance between the node and the one ABOVE it   
+  dz_node(1) = zsoi(1)
+  do j = 2,nlevdecomp+1
+     dz_node(j)= zsoi(j) - zsoi(j-1)
+  enddo
+
+
+  ! Calculate the D and F terms in the Patankar algorithm
+  ! d: diffusivity
+  ! f: flow
+  ! m: layer above
+  ! p: layer below
+  ! pe: Peclet number (ratio of convection to diffusion)
+  do j = 1,nlevdecomp+1
+    if (j == 1) then
+      d_m1_zm1(j) = 0._r8
+      w_p1 = (zsoi(j+1) - zisoi(j)) / dz_node(j+1)
+      if ( diffus(j+1) > 0._r8 .and. diffus(j) > 0._r8) then
+        d_p1 = 1._r8 / ((1._r8 - w_p1) / diffus(j) + w_p1 / diffus(j+1)) ! Harmonic mean of diffus
+      else
+        d_p1 = 0._r8
+      endif
+      d_p1_zp1(j) = d_p1 / dz_node(j+1)
+      f_m1(j) = adv_flux(j)  ! Include infiltration here
+      f_p1(j) = adv_flux(j+1)
+      pe_m1(j) = 0._r8
+      pe_p1(j) = f_p1(j) / d_p1_zp1(j) ! Peclet #
+    elseif (j == nlevdecomp+1) then
+        ! At the bottom, assume no gradient in d_z (i.e., they're the same)
+        w_m1 = (zisoi(j-1) - zsoi(j-1)) / dz_node(j)
+        if ( diffus(j) > 0._r8 .and. diffus(j-1) > 0._r8) then
+          d_m1 = 1._r8 / ((1._r8 - w_m1) / diffus(j) + w_m1 / diffus(j-1)) ! Harmonic mean of diffus
+        else
+          d_m1 = 0._r8
+        endif
+        d_m1_zm1(j) = d_m1 / dz_node(j)
+        d_p1_zp1(j) = d_m1_zm1(j) ! Set to be the same
+        f_m1(j) = adv_flux(j)
+        !f_p1(j) = adv_flux(j+1)
+        f_p1(j) = 0._r8
+        pe_m1(j) = f_m1(j) / d_m1_zm1(j) ! Peclet #
+        pe_p1(j) = f_p1(j) / d_p1_zp1(j) ! Peclet #
+    else
+        ! Use distance from j-1 node to interface with j divided by distance between nodes
+        w_m1 = (zisoi(j-1) - zsoi(j-1)) / dz_node(j)
+        if ( diffus(j-1) > 0._r8 .and. diffus(j) > 0._r8) then
+          d_m1 = 1._r8 / ((1._r8 - w_m1) / diffus(j) + w_m1 / diffus(j-1)) ! Harmonic mean of diffus
+        else
+          d_m1 = 0._r8
+        endif
+        w_p1 = (zsoi(j+1) - zisoi(j)) / dz_node(j+1)
+        if ( diffus(j+1) > 0._r8 .and. diffus(j) > 0._r8) then
+          d_p1 = 1._r8 / ((1._r8 - w_p1) / diffus(j) + w_p1 / diffus(j+1)) ! Harmonic mean of diffus
+        else
+          d_p1 = (1._r8 - w_m1) * diffus(j) + w_p1 * diffus(j+1) ! Arithmetic mean of diffus
+        endif
+        d_m1_zm1(j) = d_m1 / dz_node(j)
+        d_p1_zp1(j) = d_p1 / dz_node(j+1)
+        f_m1(j) = adv_flux(j)
+        f_p1(j) = adv_flux(j+1)
+        pe_m1(j) = f_m1(j) / d_m1_zm1(j) ! Peclet #
+        pe_p1(j) = f_p1(j) / d_p1_zp1(j) ! Peclet #
+    end if
+  enddo ! j; nlevdecomp
+
+
+  ! Calculate the tridiagonal coefficients
+  ! Coefficients of tridiagonal problem: a_i*x_(i-1) + b_i*(x_i) + c_i*x_(i+1) = r_i
+  ! Here, this is equivalent to Patankar equation 5.56 and 5.57 (but in one dimension):
+  ! a_P*phi_P = a_E*phi_E + a_W*phi_W + b [phi is concentration, = x in tridiagonal]. Converting East/West to above/below
+  ! -> -a_E*phi_E + a_P*phi_P - a_W+phi_W = b
+  ! -a_tri = a_above = D_above*A(Pe)+max(-F_above,0); D_above=diffus_above/dz
+  ! b_tri = a_above+a_below+(F_above-F_below)+rho*dz/dt
+  ! -c_tri = D_below*A(Pe)+max(F_below,0); D_below = diffus_below/dz
+  ! r_tri = b = source_const*dz + conc*rho*dz/dt
+  do j = 0,nlevdecomp +1
+
+    if (j > 0 .and. j < nlevdecomp+1) then
+        a_p_0 =  dzsoi_decomp(j) / dtime ! Should this be multiplied by layer water content (for rho)?
+    endif
+
+    if (j == 0) then ! top layer (atmosphere)
+        a_tri(j) = 0._r8
+        b_tri(j) = 1._r8
+        c_tri(j) = -1._r8
+        r_tri(j) = 0._r8
+    elseif (j == 1) then
+        a_tri(j) = -(d_m1_zm1(j) * aaa(pe_m1(j)) + max( f_m1(j), 0._r8)) ! Eqn 5.47 Patankar
+        c_tri(j) = -(d_p1_zp1(j) * aaa(pe_p1(j)) + max(-f_p1(j), 0._r8))
+        b_tri(j) = -a_tri(j) - c_tri(j) + a_p_0
+        ! r_tri includes infiltration assuming same concentration as top layer. May want to change to either provide upper boundary condition or include in source term
+        r_tri(j) = source(j) * dzsoi_decomp(j) /dtime + (a_p_0 - adv_flux(j)) * conc_trcr(j)
+    elseif (j < nlevdecomp+1) then
+        a_tri(j) = -(d_m1_zm1(j) * aaa(pe_m1(j)) + max( f_m1(j), 0._r8)) ! Eqn 5.47 Patankar
+        c_tri(j) = -(d_p1_zp1(j) * aaa(pe_p1(j)) + max(-f_p1(j), 0._r8))
+        b_tri(j) = -a_tri(j) - c_tri(j) + a_p_0
+        r_tri(j) = source(j) * dzsoi_decomp(j) /dtime + a_p_0 * conc_trcr(j) ! Eq. 5.57
+    else ! j==nlevdecomp+1; 0 concentration gradient at bottom
+        a_tri(j) = -1._r8
+        b_tri(j) = 1._r8
+        c_tri(j) = 0._r8 
+        r_tri(j) = 0._r8
+    endif
+  enddo ! j; nlevdecomp
+
+  ! Solve for the concentration profile for this time step
+  call Tridiagonal(0, nlevdecomp+1, 0, a_tri, b_tri, c_tri, r_tri, conc_after)
+
+  conc_change_rate = (conc_after(1:nlevdecomp)-conc_trcr)/dtime
+
+end subroutine advection_diffusion
+
+
+  !-----------------------------------------------------------------------
+! Modified to operate on a single column instead of passing bounds and filters
+subroutine Tridiagonal (lbj, ubj, jtop, a, b, c, r, u)
+  !
+  ! !DESCRIPTION:
+  ! Tridiagonal matrix solution
+  ! A x = r
+  ! where x and r are vectors
+
+  !
+  ! !ARGUMENTS:
+  implicit none
+
+  integer           , intent(in)    :: lbj, ubj                                 ! lbinning and ubing level indices
+  integer           , intent(in)    :: jtop         ! top level for each column [col]
+  real(r8)          , intent(in)    :: a(lbj:ubj)    ! "a" left off diagonal of tridiagonal matrix [col , j]
+  real(r8)          , intent(in)    :: b(lbj:ubj)    ! "b" diagonal column for tridiagonal matrix [col  , j]
+  real(r8)          , intent(in)    :: c(lbj:ubj)    ! "c" right off diagonal tridiagonal matrix [col   , j]
+  real(r8)          , intent(in)    :: r(lbj:ubj)    ! "r" forcing term of tridiagonal matrix [col      , j]
+  real(r8)          , intent(inout) :: u(lbj:ubj)    ! solution [col                                    , j]
+                                                                                !
+  integer                           :: j                                 ! indices
+
+  real(r8)                          :: gam(lbj:ubj)     ! temporary
+  real(r8)                          :: bet            ! temporary
+
+  !-----------------------------------------------------------------------
+
+  bet = b(jtop)
+
+  do j = lbj, ubj
+    if (j >= jtop) then
+      if (j == jtop) then
+        u(j) = r(j) / bet
+      else
+        gam(j) = c(j-1) / bet
+        bet = b(j) - a(j) * gam(j)
+        u(j) = (r(j) - a(j)*u(j-1)) / bet
+      end if
+    end if
+  end do
+
+  do j = ubj-1,lbj,-1
+    if (j >= jtop) then
+      u(j) = u(j) - gam(j+1) * u(j+1)
+    end if
+  end do
+
+end subroutine Tridiagonal
 
 end module ExternalModelAlquimiaMod
