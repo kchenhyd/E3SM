@@ -136,6 +136,7 @@ module ExternalModelAlquimiaMod
     integer                              :: plantNO3demand_pool_number,plantNH4demand_pool_number
     integer                              :: plantNO3uptake_reaction_number,plantNH4uptake_reaction_number
     logical, pointer, dimension(:)       :: is_dissolved_gas
+    real(r8),pointer,dimension(:)        :: bc ! Boundary condition (len of chem_sizes%num_primary)
     
    contains
      procedure, public :: Populate_L2E_Init_List  => EMAlquimia_Populate_L2E_Init_List
@@ -544,6 +545,7 @@ contains
     this%nitrogen_pool_mapping => NULL()
     this%pool_reaction_mapping => NULL()
     this%is_dissolved_gas      => NULL()
+    this%bc                    => NULL()
 
     ! Allocate memory for status container
     call AllocateAlquimiaEngineStatus(this%chem_status)
@@ -587,9 +589,10 @@ contains
     call printproblemmetadata(this%chem_metadata)
     
 
-    ! Todo: Keep track of other (non-SOMDEC) reactions too somehow
-    
-    ! Initial condition. The zero length for constraints suggest that it will be read in from input file?
+    ! Initial condition. The zero length for constraints suggest that it must be read in from input file
+    ! In principle the input deck could also include constraints for upper boundary condition and lateral boundary conditions (saltwater, freshwater?)
+    ! but that could get tricky if those conditions are not constant over time. Would we have to reprocess the BC every time step?
+    ! I think we do need some kind of alquimia condition for boundaries because ELM/MOSART/etc won't necessarily have the same chemicals as the alquimia reaction network
     call AllocateAlquimiaGeochemicalCondition(len_trim(ic_name,C_INT),0,0,this%chem_ic)
     call f_c_string_ptr(ic_name,this%chem_ic%name,len_trim(ic_name)+1)
     
@@ -598,6 +601,8 @@ contains
     call AllocateAlquimiaProperties(this%chem_sizes, this%chem_properties)
     call AllocateAlquimiaAuxiliaryData(this%chem_sizes, this%chem_aux_data)
     call AllocateAlquimiaAuxiliaryOutputData(this%chem_sizes, this%chem_aux_output)
+
+    allocate(this%bc(this%chem_sizes%num_primary))
     
 
 #else
@@ -742,6 +747,8 @@ subroutine EMAlquimia_Coldstart(this, clump_rank, l2e_list, e2l_list, bounds_clu
           
       enddo
   enddo
+  ! Save condition to use as surface boundary condition
+  this%bc = total_mobile_e2l(1,1,:)
 #endif
 end subroutine EMAlquimia_Coldstart
 
@@ -801,6 +808,7 @@ end subroutine EMAlquimia_Coldstart
     ! Setting these to the values in PFLOTRAN clm_rspfuncs.F90
     real(r8), parameter :: natomw = 14.0067d0 ! Value in clmvarcon is 14.007
     real(r8), parameter :: catomw = 12.0110d0 ! Value in clmvarcon is 12.011
+    real(r8),dimension(this%chem_sizes%num_primary)  :: surf_flux, surf_bc, lat_flux, lat_bc
     
     character(kind=C_CHAR,len=kAlquimiaMaxStringLength) :: status_message
     procedure(ReactionStepOperatorSplit), pointer :: engine_ReactionStepOperatorSplit
@@ -988,6 +996,15 @@ end subroutine EMAlquimia_Coldstart
           enddo ! End of layer loop setting things up
 
               ! Step the chemistry solver, including advection/diffusion and timestep cutting capability for whole column
+              ! Need to set surface and lateral boundary condition concentrations
+          ! Surface boundary condition should be atmosphere unless there is surface water?
+          ! Lateral boundary condition in MARSH mode would be saltwater if we are in the marsh column
+          ! If we're in the tidal column and we want to keep track, it's concentrations in water flowing out of the marsh... Makes it trickier
+          ! Need to save lateral flow for C balance
+              surf_flux(:) = 0.0_r8
+              lat_flux(:)  = 0.0_r8
+              lat_bc(:) = this%bc(:) ! Currently setting to initial condition. Should update so it tracks saline/fresh
+              surf_bc(:) = this%bc(:) ! Currently setting to initial condition. Should update so it tracks atmospheric O2, CO2, CH4 concentrations
               call run_column_onestep(this, c, dt,0,max_cuts,&
                   water_density_l2e,&
                   aqueous_pressure_l2e,&
@@ -999,7 +1016,8 @@ end subroutine EMAlquimia_Coldstart
                   cation_exchange_capacity_l2e,&
                   aux_doubles_l2e,&
                   aux_ints_l2e,&
-                  porosity_l2e,temperature,dz,h2o_liqvol/porosity_l2e,qflx_adv_l2e,qflx_lat_aqu_l2e)
+                  porosity_l2e,temperature,dz,h2o_liqvol/porosity_l2e,qflx_adv_l2e,qflx_lat_aqu_l2e,lat_bc,lat_flux,surf_bc,surf_flux)
+
               if(max_cuts>3) write(iulog,'(a,i2,a,2i3)'),"Alquimia converged after",max_cuts," cuts",c,j
 
               ! Save back to ELM
@@ -1644,7 +1662,7 @@ end subroutine EMAlquimia_Coldstart
           cation_exchange_capacity,&
           aux_doubles,&
           aux_ints,&
-          porosity,temperature,volume,saturation,adv_flux,lat_flux)
+          porosity,temperature,volume,saturation,adv_flux,lat_flow,lat_bc,lat_flux,surf_bc,surf_flux)
     
   use c_f_interface_module, only : c_f_string_ptr
   use clm_varpar       , only : nlevdecomp
@@ -1665,7 +1683,10 @@ end subroutine EMAlquimia_Coldstart
                                           cation_exchange_capacity(:,:,:),&
                                           aux_doubles(:,:,:)
   integer,intent(inout)   ,pointer     :: aux_ints(:,:,:)
-  real(r8),intent(in),dimension(:,:)  :: porosity,temperature,volume,saturation,adv_flux,lat_flux
+  real(r8),intent(in),dimension(:,:)  :: porosity,temperature,volume,saturation,lat_flow
+  real(r8),intent(in),dimension(:,:)   :: adv_flux
+  real(r8),intent(in),dimension(:)   :: lat_bc, surf_bc
+  real(r8),intent(inout)             :: surf_flux(:), lat_flux(:) ! Total (cumulative) surface flux in time step
 
     real(r8)             :: water_density_tmp(1,nlevdecomp),&
                             aqueous_pressure_tmp(1,nlevdecomp),&
@@ -1678,7 +1699,8 @@ end subroutine EMAlquimia_Coldstart
                             aux_doubles_tmp(1,nlevdecomp,this%chem_sizes%num_aux_doubles)
     integer            ::   aux_ints_tmp(1,nlevdecomp,this%chem_sizes%num_aux_integers)
     real(r8) :: diffus(nlevdecomp)
-    real(r8) :: transport_change_rate(nlevdecomp,this%chem_sizes%num_primary)
+    real(r8) :: transport_change_rate(nlevdecomp,this%chem_sizes%num_primary),source_term(nlevdecomp,this%chem_sizes%num_primary)
+    real(r8) :: surf_flux_step(this%chem_sizes%num_primary), lat_flux_step(this%chem_sizes%num_primary)
   
   real(r8) :: actual_dt,porosity_tmp
   character(512) :: msg
@@ -1695,10 +1717,27 @@ end subroutine EMAlquimia_Coldstart
     ! Set diffusion coefficient depending on saturation and whether species is aqueous gas or not
     ! Need to set boundary condition concentrations for adv flux (top layer infiltration) and lateral flux (source)
     
-    ! Assume diffusion through water according to Wright (1990)
-    ! In that paper diffus_water = 0.000025 cm2/s
     do j=1,nlevdecomp
+      ! Assume diffusion through water according to Wright (1990)
+      ! In that paper diffus_water = 0.000025 cm2/s
       diffus(j) = 2.5e-9_r8*0.005_r8*exp(10.0_r8*saturation(c,j)*porosity(c,j))
+
+      ! Source term is lateral flow. For inflow, use lateral boundary condition. For outflow, use local concentration
+      ! lat_flux units are mm H2O/s = 1e-3 m3 h2o/m3 bulk
+      ! lat_bc in units of mol/m3 H2O
+      ! source_term in mol/m3 bulk/s
+      if(lat_flow(c,j) > 0) then
+        source_term(j,k) = lat_flow(c,j)*1e-3 * lat_bc(k) ! mol/m3 bulk/s
+      else
+        source_term(j,k) = lat_flow(c,j)*1e-3 * total_mobile(c,j,k)
+      endif
+      lat_flux_step(k) = source_term(j,k)
+
+      if(adv_flux(c,1)<0.0_r8) then ! Downward flow uses surface boundary condition
+        surf_flux_step(k) = - adv_flux(c,1)*surf_bc(k)*actual_dt
+      else ! Upward flow uses surface layer concentration
+        surf_flux_step(k) = - adv_flux(c,1)*total_mobile(c,1,k)*actual_dt
+      endif
     enddo
     
     if(this%is_dissolved_gas(k)) then
@@ -1707,12 +1746,16 @@ end subroutine EMAlquimia_Coldstart
       do j=1,nlevdecomp
         diffus(j) = diffus(j) + 2.0e-5_r8*0.3_r8*(1.0_r8 - min(saturation(c,j),1.0))**2.5
       enddo
-    ! Should I add a virtual top layer that represents the atmospheric/surface water boundary condition? 
-    ! Or just equilibrate top layer of dissolved gases w.r.t. upper BC?
-    ! Need an output variable to report the fluxes at the top boundary
+
+      ! Equilibrate top layer of dissolved gases w.r.t. upper BC
+      surf_flux_step(k) = surf_flux_step(k) + (total_mobile(c,1,k) - surf_bc(k))
+      total_mobile(c,1,k) = surf_bc(k)
+    
     endif
     ! At this point, total_mobile is stored as mol/m3 bulk (ELM side). Dividing by porosity*saturation converts to mol/m3 water
-    call advection_diffusion(total_mobile(c,:,k)/(porosity(c,:)*saturation(c,:)),adv_flux(c,:),diffus(:),lat_flux(c,:),actual_dt/2,transport_change_rate(:,k))
+    ! Note adv_flux is defined in advection_diffusion as <0 being downward
+    call advection_diffusion(total_mobile(c,:,k)/(porosity(c,:)*saturation(c,:)),adv_flux(c,:),diffus(:),&
+                            source_term(:,k)/(porosity(c,:)*saturation(c,:)),surf_bc(k),actual_dt/2,transport_change_rate(:,k))
     ! At this point perhaps we should go through and re-equilibrate dissolved gases in top layer if unsaturated?
 
   ! Here need to convert back from mol/m3 water to mol/m3 bulk
@@ -1787,6 +1830,7 @@ end subroutine EMAlquimia_Coldstart
 
         ! Also need to undo transport because we are starting this time step over
         total_mobile(c,:,:) = total_mobile(c,:,:) - transport_change_rate(:,:)*actual_dt/2
+        ! Should maybe un-equilibrate top gas layer too, except we will always do that again anyway
 
         ! Need to run the step two times because we have cut the timestep in half
         call run_column_onestep(this, c, dt,num_cuts+1,ncuts,&
@@ -1799,7 +1843,7 @@ end subroutine EMAlquimia_Coldstart
           surface_site_density,&
           cation_exchange_capacity,&
           aux_doubles,&
-          aux_ints,porosity,temperature,volume,saturation,adv_flux,lat_flux)
+          aux_ints,porosity,temperature,volume,saturation,adv_flux,lat_flow,lat_bc,lat_flux,surf_bc,surf_flux)
 
         if(ncuts>max_cuts) max_cuts=ncuts
         ! write(iulog,*),'Converged =',this%chem_status%converged,"ncuts =",ncuts,'(Substep 1)'
@@ -1816,7 +1860,7 @@ end subroutine EMAlquimia_Coldstart
           surface_site_density,&
           cation_exchange_capacity,&
           aux_doubles,&
-          aux_ints,porosity,temperature,volume,saturation,adv_flux,lat_flux)
+          aux_ints,porosity,temperature,volume,saturation,adv_flux,lat_flow,lat_bc,lat_flux,surf_bc,surf_flux)
           if(ncuts2>max_cuts) max_cuts=ncuts2
         !   write(iulog,*),'Converged =',this%chem_status%converged,"ncuts =",ncuts2,'. Substep 2 +',ii
         enddo
@@ -1836,6 +1880,9 @@ end subroutine EMAlquimia_Coldstart
     cation_exchange_capacity(c,:,:) = cation_exchange_capacity_tmp(1,:,:)
     aux_doubles(c,:,:) = aux_doubles_tmp(1,:,:)
     aux_ints(c,:,:) = aux_ints_tmp(1,:,:)
+
+    surf_flux = surf_flux + surf_flux_step
+    lat_flux  = lat_flux  + lat_flux_step
       
     ! Second half of transport (Strang splitting)
 
@@ -1843,10 +1890,27 @@ end subroutine EMAlquimia_Coldstart
       ! Set diffusion coefficient depending on saturation and whether species is aqueous gas or not
       ! Need to set boundary condition concentrations for adv flux (top layer infiltration) and lateral flux (source)
       
-      ! Assume diffusion through water according to Wright (1990)
-      ! In that paper diffus_water = 0.000025 cm2/s
       do j=1,nlevdecomp
+        ! Assume diffusion through water according to Wright (1990)
+        ! In that paper diffus_water = 0.000025 cm2/s
         diffus(j) = 2.5e-9_r8*0.005_r8*exp(10.0_r8*saturation(c,j)*porosity(c,j))
+  
+        ! Source term is lateral flow. For inflow, use lateral boundary condition. For outflow, use local concentration
+        ! lat_flux units are mm H2O/s = 1e-3 m3 h2o/m3 bulk
+        ! lat_bc in units of mol/m3 H2O
+        ! source_term in mol/m3 bulk/s
+        if(lat_flow(c,j) > 0) then
+          source_term(j,k) = lat_flow(c,j)*1e-3 * lat_bc(k) ! mol/m3 bulk/s
+        else
+          source_term(j,k) = lat_flow(c,j)*1e-3 * total_mobile(c,j,k)
+        endif
+        lat_flux_step(k) = source_term(j,k)
+  
+        if(adv_flux(c,1)<0.0_r8) then ! Downward flow uses surface boundary condition
+          surf_flux_step(k) = - adv_flux(c,1)*surf_bc(k)*actual_dt
+        else ! Upward flow uses surface layer concentration
+          surf_flux_step(k) = - adv_flux(c,1)*total_mobile(c,1,k)*actual_dt
+        endif
       enddo
       
       if(this%is_dissolved_gas(k)) then
@@ -1855,18 +1919,24 @@ end subroutine EMAlquimia_Coldstart
         do j=1,nlevdecomp
           diffus(j) = diffus(j) + 2.0e-5_r8*0.3_r8*(1.0_r8 - min(saturation(c,j),1.0))**2.5
         enddo
-      ! Should I add a virtual top layer that represents the atmospheric/surface water boundary condition? 
-      ! Or just equilibrate top layer of dissolved gases w.r.t. upper BC?
-      ! Need an output variable to report the fluxes at the top boundary
+  
+        ! Equilibrate top layer of dissolved gases w.r.t. upper BC
+        surf_flux_step(k) = surf_flux_step(k) + (total_mobile(c,1,k) - surf_bc(k))
+        total_mobile(c,1,k) = surf_bc(k)
+      
       endif
       ! At this point, total_mobile is stored as mol/m3 bulk (ELM side). Dividing by porosity*saturation converts to mol/m3 water
-      ! But does this mess up assumptions for dissolved gases? Those should be moving through air-filled porosity. Maybe it needs to be a two step process
-      call advection_diffusion(total_mobile(c,:,k)/(porosity(c,:)*saturation(c,:)),adv_flux(c,:),diffus(:),lat_flux(c,:),actual_dt/2,transport_change_rate(:,k))
-      ! At this point perhaps we should go through and equilibrate dissolved gases in top layer if unsaturated?
-
+      ! Note adv_flux is defined in advection_diffusion as <0 being downward
+      call advection_diffusion(total_mobile(c,:,k)/(porosity(c,:)*saturation(c,:)),adv_flux(c,:),diffus(:),&
+                              source_term(:,k)/(porosity(c,:)*saturation(c,:)),surf_bc(k),actual_dt/2,transport_change_rate(:,k))
+      ! At this point perhaps we should go through and re-equilibrate dissolved gases in top layer if unsaturated?
+  
     ! Here need to convert back from mol/m3 water to mol/m3 bulk
       total_mobile(c,:,k) = total_mobile(c,:,k) + transport_change_rate(:,k)*porosity(c,:)*saturation(c,:)*actual_dt/2
     enddo
+  
+    surf_flux = surf_flux + surf_flux_step
+    lat_flux  = lat_flux  + lat_flux_step
 
 
 end subroutine run_column_onestep
@@ -1874,7 +1944,7 @@ end subroutine run_column_onestep
 #endif
 
 ! Should make sure this is available when alquimia is turned off/not compiled in case we want to track e.g. salinity without BGC
-subroutine advection_diffusion(conc_trcr,adv_flux,diffus,source,dtime,conc_change_rate)
+subroutine advection_diffusion(conc_trcr,adv_flux,diffus,source,surf_bc,dtime,conc_change_rate)
   ! Advection and diffusion for a single tracer in one column given diffusion coefficient, flow, and source-sink terms
   ! Based on SoilLittVertTranspMod, which implements S. V. Patankar, Numerical Heat Transfer and Fluid Flow, Series in Computational Methods in Mechanics and Thermal Sciences, Hemisphere Publishing Corp., 1980. Chapter 5
   ! Not sure if this belongs here or somewhere else. Is it bad to do this in the EMI subroutine?
@@ -1886,6 +1956,7 @@ subroutine advection_diffusion(conc_trcr,adv_flux,diffus,source,dtime,conc_chang
   real(r8), intent(in) :: adv_flux(1:nlevdecomp+1)    ! (m/s), vertical into layer
   real(r8), intent(in) :: diffus(1:nlevdecomp+1)  ! diffusivity (m2/s)
   real(r8), intent(in) :: source(1:nlevdecomp+1)  ! Source term (mol/m3/s)
+  real(r8), intent(in) :: surf_bc                 ! Surface boundary layer concentration (for infiltration)
   real(r8), intent(in) :: dtime                   ! Time step (s)
   real(r8), intent(out):: conc_change_rate(0:nlevdecomp+1) ! Bulk concentration (e.g. mol/m3/s). Or should it be concentration in water??
 
@@ -2004,12 +2075,17 @@ subroutine advection_diffusion(conc_trcr,adv_flux,diffus,source,dtime,conc_chang
         c_tri(j) = -(d_p1_zp1(j) * aaa(pe_p1(j)) + max(-f_p1(j), 0._r8))
         b_tri(j) = -a_tri(j) - c_tri(j) + a_p_0
         ! r_tri includes infiltration assuming same concentration as top layer. May want to change to either provide upper boundary condition or include in source term
-        r_tri(j) = source(j) * dzsoi_decomp(j) /dtime + (a_p_0 - adv_flux(j)) * conc_trcr(j)
+        ! r_tri(j) = source(j) * dzsoi_decomp(j) + (a_p_0 - adv_flux(j)) * conc_trcr(j)
+        if(adv_flux(j)<0) then ! downward flow (infiltration)
+           r_tri(j) = r_tri(j) - adv_flux(j)*surf_bc
+        else
+          r_tri(j) = r_tri(j) - adv_flux(j)*conc_trcr(j)
+        endif
     elseif (j < nlevdecomp+1) then
         a_tri(j) = -(d_m1_zm1(j) * aaa(pe_m1(j)) + max( f_m1(j), 0._r8)) ! Eqn 5.47 Patankar
         c_tri(j) = -(d_p1_zp1(j) * aaa(pe_p1(j)) + max(-f_p1(j), 0._r8))
         b_tri(j) = -a_tri(j) - c_tri(j) + a_p_0
-        r_tri(j) = source(j) * dzsoi_decomp(j) /dtime + a_p_0 * conc_trcr(j) ! Eq. 5.57
+        r_tri(j) = source(j) * dzsoi_decomp(j) + a_p_0 * conc_trcr(j) ! Eq. 5.57
     else ! j==nlevdecomp+1; 0 concentration gradient at bottom
         a_tri(j) = -1._r8
         b_tri(j) = 1._r8
