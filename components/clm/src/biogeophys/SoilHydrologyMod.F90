@@ -632,7 +632,7 @@ contains
                 qflx_h2osfc_drain(c)= max(0._r8,h2osfc(c)/dtime) !ensure no h2osfc
              endif
 
-#if (defined HUM_HOL || defined MARSH)
+#if (defined HUM_HOL)
              if(num_hydrologyc .ne. 2) call endrun(msg="Error: Must have 2 columns if HUM_HOL or MARSH is defined")
              !compute lateral flux in aquifer
              if (jwt(c) .lt. nlevsoi) then
@@ -682,9 +682,12 @@ contains
                  qflx_lat_aqu(2) = -2._r8/(1._r8/ka_hu+1._r8/ka_ho) * (zwt_hu-zwt_ho- &
                      humhol_ht) / humhol_dist * sqrt(hum_frac/hol_frac)
                endif
+            endif
                ! bsulman : Changed to use flexible set of parameters up to full NOAA tidal components (37 coefficients)
                ! Tidal cycle is the sum of all the sinusoidal components
-#ifdef MARSH
+#endif
+#if (defined MARSH)
+            if (c.eq.2) then
                call get_curr_time(days, seconds)
                h2osfc_tide = 0.0_r8
                 do ii=1,num_tide_comps
@@ -703,7 +706,6 @@ contains
                   qflx_lat_aqu(1) = qflx_lat_aqu(1) - min((h2osfc(1)-(h2osfc(2)-humhol_ht*1000.0))*sfcflow_ratescale,h2osfc(1)*0.5/dtime)
                 endif
 
-#endif
             endif
 #endif
 
@@ -907,6 +909,26 @@ contains
           enddo
        end do
 
+       !water level from Maroi and Stecher 2021 to qflux
+       !divide water level differences by 1000 to convert mm to m
+       !hd,hn,hl,Kt,Ke,Kl all need to be in mm
+#if (defined MARSH)
+       if (h2osfc(2) >= (h2osfc(1)+humhol_ht)) then
+         qflx_lat_aqu(1) = (h2osfc(2)-h2osfc(1))/1000
+         qflx_lat_aqu(2) = 0.0
+       elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hd)
+         qflx_lat_aqu(1) = 0.0
+         qflx_lat_aqu(2) = (h2osfc(1)+humhol_ht-h2osfc(2))*watsat(1)/1000
+            if (h2osfc(2) > hn) then
+               qflx_lat_aqu(1) = Kt*(h2osfc(2)+zwt(1))/1000
+               qflx_lat_aqu(2) = -qflx_lat_aqu(1)
+       elseif (h2osfc(2) <= hd)
+         qflx_lat_aqu(2) = ((humhol_ht-hl)*Ke)*watsat/1000
+         qflx_lat_aqu(1) = - qflx_lat_aqu(2)
+       elseif (h2osfc(2) <= (hl + 0.01))
+         qflx_lat_aqu(2) = (hl-Kl)*watsat/1000
+         qflx_lat_aqu(1) = -qflx_lat_aqu(2)
+#endif    
        !============================== QCHARGE =========================================
        ! Water table changes due to qcharge
        do fc = 1, num_hydrologyc
