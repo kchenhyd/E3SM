@@ -183,10 +183,10 @@ contains
          fsat(c) = 1.0_r8 * exp(-3.0_r8/humhol_ht*(zwt(c)))   !at 30cm, hummock saturated at 5%
 #endif
 
-#if (defined MARSH)
-         if (c .eq. 1) fsat(c) = 1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)))   !at 30cm, hummock saturated at 5% changed to 0.1 TAO
-         if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+humhol_ht)), 1._r8) !TAO 0.3 t0 0.1, 0.15 to 0.35 !bsulman: what does 0.15 represent?
-#endif
+!#if (defined MARSH)
+!         if (c .eq. 1) fsat(c) = 1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)))   !at 30cm, hummock saturated at 5% changed to 0.1 TAO
+!         if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+humhol_ht)), 1._r8) !TAO 0.3 t0 0.1, 0.15 to 0.35 !bsulman: what does 0.15 represent?
+!#endif
          ! use perched water table to determine fsat (if present)
          if ( frost_table(c) > zwt(c)) then 
             if (use_vichydro) then
@@ -198,10 +198,10 @@ contains
             fsat(c) = 1.0_r8 * exp(-3.0_r8/humhol_ht*(zwt(c)))   !at 30cm, hummock saturated at 5%
 #endif
 
-#if (defined MARSH)
-            if (c .eq. 1) fsat(c) = 1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)))   !at 30cm, hummock saturated at 5%
-            if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+humhol_ht)), 1._r8) !TAO 0.3 t 0.1, 0.15 to 0.35
-#endif
+!#if (defined MARSH)
+!            if (c .eq. 1) fsat(c) = 1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)))   !at 30cm, hummock saturated at 5%
+!            if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+humhol_ht)), 1._r8) !TAO 0.3 t 0.1, 0.15 to 0.35
+!#endif
 
          else
             if ( frost_table(c) > zwt_perched(c)) then 
@@ -211,10 +211,10 @@ contains
             fsat(c) = 1.0_r8 * exp(-3.0_r8/humhol_ht*(zwt(c)))   !at 30cm, hummock saturated at 5%
 #endif   
 
-#if (defined MARSH)
-            if (c .eq. 1) fsat(c) = 1.0 * exp(-3.0_r8/humhol_ht*(zwt(c))) !at 30cm, hummock saturated at 5%
-            if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+humhol_ht)), 1._r8) !TAO 0.3 t 1.5, 0.15 to 0.35
-#endif 
+!#if (defined MARSH)
+!            if (c .eq. 1) fsat(c) = 1.0 * exp(-3.0_r8/humhol_ht*(zwt(c))) !at 30cm, hummock saturated at 5%
+!            if (c .eq. 2) fsat(c) = min(1.0 * exp(-3.0_r8/humhol_ht*(zwt(c)-h2osfc(c)/1000.+humhol_ht)), 1._r8) !TAO 0.3 t 1.5, 0.15 to 0.35
+!#endif 
          endif
          if (origflag == 1) then
             if (use_vichydro) then
@@ -238,12 +238,12 @@ contains
            else
              qflx_surf(c) = 0._r8   !turn off surface runoff for hollow
            endif
-#elif (defined MARSH)
-            if (c .eq. 1) then  !XS - only compute sfc runoff from hummock, send to hollow 
-             qflx_surf(c) = fcov(c) * qflx_top_soil(c) !TAO
-            else
-             qflx_surf(c) = 0._r8   !turn off surface runoff for hollow
-            endif
+!#elif (defined MARSH)
+!            if (c .eq. 1) then  !XS - only compute sfc runoff from hummock, send to hollow 
+!             qflx_surf(c) = fcov(c) * qflx_top_soil(c) !TAO
+!            else
+!             qflx_surf(c) = 0._r8   !turn off surface runoff for hollow
+!            endif
 #else
            qflx_surf(c) = fcov(c) * qflx_top_soil(c)
 #endif
@@ -581,12 +581,12 @@ contains
 #if (defined HUM_HOL)
              if (h2osfc(c) .gt. 0._r8) then
                 qflx_h2osfc_surf(c) = min(qflx_h2osfc_surfrate*h2osfc(c)**2.0_r8,h2osfc(c) / dtime)
-#elif (defined MARSH)   
-             qflx_tide(c) = 0._r8
-             if (h2osfc(c) .gt. 0._r8 .and. c==1) then
-                qflx_h2osfc_surf(c) = min(qflx_h2osfc_surfrate*h2osfc(c)**2.0_r8,h2osfc(c) / dtime) 
-             else if (c .eq. 2) then
-                qflx_h2osfc_surf(c) = 0._r8
+!#elif (defined MARSH)   
+!             qflx_tide(c) = 0._r8
+!             if (h2osfc(c) .gt. 0._r8 .and. c==1) then
+!                qflx_h2osfc_surf(c) = min(qflx_h2osfc_surfrate*h2osfc(c)**2.0_r8,h2osfc(c) / dtime) 
+!             else if (c .eq. 2) then
+!                qflx_h2osfc_surf(c) = 0._r8
 
 #else
              if(h2osfc(c) >= h2osfc_thresh(c) .and. h2osfcflag/=0) then
@@ -681,10 +681,6 @@ contains
                      humhol_ht) / humhol_dist * sqrt(hol_frac/hum_frac)
                  qflx_lat_aqu(2) = -2._r8/(1._r8/ka_hu+1._r8/ka_ho) * (zwt_hu-zwt_ho- &
                      humhol_ht) / humhol_dist * sqrt(hum_frac/hol_frac)
-                 !salinity(1) = 25._r8 + 20_r8*qflx_lat_aqu(2)*dtime
-                 !salinity(1) = 0._r8
-                 !salinity(2) = 30._r8
-                 !SLL column 1 is marsh, column 2 is tidal channel
                endif
                ! bsulman : Changed to use flexible set of parameters up to full NOAA tidal components (37 coefficients)
                ! Tidal cycle is the sum of all the sinusoidal components
@@ -998,7 +994,7 @@ contains
        do fc = 1, num_hydrologyc
            c = filter_hydrologyc(fc)
 
-           qflx_lat_aqu_layer(c,:) = 0.0
+           !qflx_lat_aqu_layer(c,:) = 0.0
     
     ! use analytical expression for aquifer specific yield
              rous = watsat(c,nlevsoi) &
@@ -1582,46 +1578,51 @@ contains
                    imped=(1._r8 - fracice_rsub(c))
                    rsub_top_max = 5.5e-3_r8
    !Salinity and salt content
-#if (defined MARSH)
-         do j=1,nlevgrnd
-         salinity(2,j) = 35.0_r8
-         salt_content(c,j)=salinity(c,j)*h2osoi_liq(c,j)
-         qflx_adv_tot(c,j) = qflx_adv(c,j)*dtime
-            if (c==1) then
-               if (abs(qflx_adv_tot(c,j)) > h2osoi_liq(c,j)) then
-                  qflx_adv_tot(c,j) = h2osoi_liq(c,j)
-               endif
-                  write(iulog,*), "qflx", qflx_adv_tot(c,j)
-                  if (qflx_lat_aqu_layer(c,j) < 0.0_r8) then
-                     if (qflx_adv_tot(c,j) < 0.0_r8) then                      
-                        salt_content(c,j) = max(salt_content(c,j) + salinity(c,j)*qflx_lat_aqu_layer(c,j) &
-                        - salinity(c,j-1)*qflx_adv_tot(c,j-1) + salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
-                     elseif (qflx_adv_tot(c,j) >=0.0_r8) then
-                        salt_content(c,j) = max(salt_content(c,j) + salinity(c,j)*qflx_lat_aqu_layer(c,j) &
-                        + salinity(c,j+1)*qflx_adv_tot(c,j+1) - salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
-                     endif
-                  elseif (qflx_lat_aqu_layer(c,j) >= 0.0_r8) then
-                     if (qflx_adv_tot(c,j) < 0.0_r8) then
-                        salt_content(c,j) = max(salt_content(c,j) + salinity(2,j)*qflx_lat_aqu_layer(c,j) &
-                        - salinity(c,j-1)*qflx_adv_tot(c,j-1) + salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
-                     elseif (qflx_adv_tot(c,j) >=0.0_r8) then
-                        salt_content(c,j) = max(salt_content(c,j) + salinity(2,j)*qflx_lat_aqu_layer(c,j) &
-                        + salinity(c,j+1)*qflx_adv_tot(c,j+1) - salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
-                     endif
-                  endif
-               if(h2osoi_liq(c,j)>0.0_r8) then
-                  salinity(c,j) = salt_content(1,j)/h2osoi_liq(c,j)
-               else
-                  salinity(c,j) = 0.0
-               endif
-               write(iulog,*), "sal", salinity(c,j)
-            elseif (c==2) then
-                  salinity(c,j) = 35.0_r8
-
-            endif
- 
-         enddo
-#endif
+!#if (defined MARSH)
+!         do j=1,nlevgrnd
+!         salinity(2,j) = 35.0_r8
+!         salt_content(c,j)=salinity(c,j)*h2osoi_liq(c,j)
+!         qflx_adv_tot(c,j) = qflx_adv(c,j)*dtime
+!            if (c==1) then
+!               if (abs(qflx_adv_tot(c,j)) > h2osoi_liq(c,j)) then
+!                  qflx_adv_tot(c,j) = h2osoi_liq(c,j)
+!               endif
+!                  write(iulog,*), "qflx_adv", qflx_adv_tot(c,j)
+!                  write(iulog,*), "h2osoi_liq", h2osoi_liq(c,j)
+!                  write(iulog,*), "qflx_lat", qflx_lat_aqu_layer(c,j)
+!                  if (qflx_lat_aqu_layer(c,j) < -1E-5) then
+!                     if (qflx_adv_tot(c,j) < -1E-5) then                      
+!                        salt_content(c,j) = max(salt_content(c,j) + salinity(c,j)*qflx_lat_aqu_layer(c,j) &
+!                        - salinity(c,j-1)*qflx_adv_tot(c,j-1) + salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
+!                     elseif (qflx_adv_tot(c,j) >=1E-5) then
+!                        salt_content(c,j) = max(salt_content(c,j) + salinity(c,j)*qflx_lat_aqu_layer(c,j) &
+!                        + salinity(c,j+1)*qflx_adv_tot(c,j+1) - salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
+!                     endif
+!                  elseif (qflx_lat_aqu_layer(c,j) >= 1E-5) then
+!                     if (qflx_adv_tot(c,j) < -1E-5) then
+!                        salt_content(c,j) = max(salt_content(c,j) + salinity(2,j)*qflx_lat_aqu_layer(c,j) &
+!                        - salinity(c,j-1)*qflx_adv_tot(c,j-1) + salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
+!                     elseif (qflx_adv_tot(c,j) >=1E-5) then
+!                        salt_content(c,j) = max(salt_content(c,j) + salinity(2,j)*qflx_lat_aqu_layer(c,j) &
+!                        + salinity(c,j+1)*qflx_adv_tot(c,j+1) - salinity(c,j)*qflx_adv_tot(c,j), 0.0_r8)
+!                  else
+!                     salt_content(c,j) = salt_content(c,j)
+!                     endif
+!                  endif
+!               if(h2osoi_liq(c,j)>0.0_r8) then
+!                  salinity(c,j) = salt_content(1,j)/h2osoi_liq(c,j)
+!               else
+!                  salinity(c,j) = 0.0
+!               endif
+!               write(iulog,*), "sal", salinity(c,j)
+!               write(iulog,*), "salt", salt_content(c,j)
+!            elseif (c==2) then
+!                  salinity(c,j) = 35.0_r8
+!
+!            endif
+! 
+!         enddo
+!#endif
 
 #if (defined HUM_HOL || defined MARSH)                   
                    rsub_top_max = min(5.5e-3_r8, rsub_top_globalmax)
