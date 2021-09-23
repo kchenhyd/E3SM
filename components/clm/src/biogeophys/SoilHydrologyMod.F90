@@ -760,7 +760,8 @@ contains
      use clm_varctl       , only : use_vsfm, use_var_soil_thick
      use domainMod        , only : ldomain
      use SoilWaterMovementMod, only : zengdecker_2009_with_var_soil_thick
-     !
+     use pftvarcon           , only : humhol_ht, num_tide_comps, tide_baseline,tide_coeff_period, tide_coeff_phase, tide_coeff_amp,sfcflow_ratescale, hn, hd, hl, Kt, Ke, Kl
+
      ! !ARGUMENTS:
      type(bounds_type)        , intent(in)    :: bounds  
      integer                  , intent(in)    :: num_hydrologyc       ! number of column soil points in column filter
@@ -772,7 +773,7 @@ contains
      type(temperature_type)   , intent(in)    :: temperature_vars
      type(waterstate_type)    , intent(inout) :: waterstate_vars
      type(waterflux_type)     , intent(inout) :: waterflux_vars
-     !
+     
      ! !LOCAL VARIABLES:
      integer  :: c,j,fc,i,l,g                            ! indices
      integer  :: nlevbed                                 ! # layers to bedrock
@@ -903,6 +904,7 @@ contains
                    exit
                 else
                    jwt(c) = j-1
+
                    exit
                 end if
              end if
@@ -916,18 +918,18 @@ contains
        if (h2osfc(2) >= (h2osfc(1)+humhol_ht)) then
          qflx_lat_aqu(1) = (h2osfc(2)-h2osfc(1))/1000
          qflx_lat_aqu(2) = 0.0
-       elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hd)
-         qflx_lat_aqu(1) = 0.0
-         qflx_lat_aqu(2) = (h2osfc(1)+humhol_ht-h2osfc(2))*watsat(1)/1000
-            if (h2osfc(2) > hn) then
-               qflx_lat_aqu(1) = Kt*(h2osfc(2)+zwt(1))/1000
-               qflx_lat_aqu(2) = -qflx_lat_aqu(1)
-       elseif (h2osfc(2) <= hd)
-         qflx_lat_aqu(2) = ((humhol_ht-hl)*Ke)*watsat/1000
+       elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hd) then
+         qflx_lat_aqu(c) = 0.0
+       !elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hn) then 
+       !        qflx_lat_aqu(1) = Kt*(h2osfc(2)-(humhol_ht-zwt(1)*1000)/1000 
+       !        qflx_lat_aqu(2) = -1*qflx_lat_aqu(1)
+       elseif (h2osfc(2) <= hd) then
+         qflx_lat_aqu(2) = ((humhol_ht-zwt(1)-hl)*Ke)/1000 !not multiplying by porosity yet
          qflx_lat_aqu(1) = - qflx_lat_aqu(2)
-       elseif (h2osfc(2) <= (hl + 0.01))
-         qflx_lat_aqu(2) = (hl-Kl)*watsat/1000
+       elseif (h2osfc(2) <= (hl + 0.01)) then
+         qflx_lat_aqu(2) = ((humhol_ht-zwt(1))*Kl)/1000 !not multiplying by porosity yet
          qflx_lat_aqu(1) = -qflx_lat_aqu(2)
+       endif
 #endif    
        !============================== QCHARGE =========================================
        ! Water table changes due to qcharge
