@@ -291,12 +291,12 @@ module pftvarcon
   real(r8),allocatable  :: tide_coeff_phase(:)         ! Phase shift of tide component (s)
   real(r8)              :: sfcflow_ratescale         ! Rate scale for surface water flow across columns (s-1)
 ! Marois and Stecher hydrology variables
-  real(r8),allocatable  :: hd(:)                         !height drainage (mm), height in tide channel at which marsh starts draining (exponentially)
-  real(r8),allocatable  :: hn(:)                         !height nonovertopping tide (mm), height in tide channel at which subsurface marsh table rises
-  real(r8),allocatable  :: hl(:)                         !height linear drainage (mm), height in tide channel at which marsh drains linearly
-  real(r8),allocatable  :: Kt(:)                         !tide coefficient, unitless, scales effect of nonovertopping tide
-  real(r8),allocatable  :: Ke(:)                         !exponential drainage rate (mm/s)
-  real(r8),allocatable  :: Kl(:)                         !linear drainage rate (mm/s)              
+  real(r8)              :: hd                         !height drainage (mm), height in tide channel at which marsh starts draining (exponentially)
+  real(r8)              :: hn                         !height nonovertopping tide (mm), height in tide channel at which subsurface marsh table rises
+  real(r8)              :: hl                         !height linear drainage (mm), height in tide channel at which marsh drains linearly
+  real(r8)              :: Kt                         !tide coefficient, unitless, scales effect of nonovertopping tide
+  real(r8)              :: Ke                         !exponential drainage rate (mm/s)
+  real(r8)              :: Kl                         !linear drainage rate (mm/s)              
  ! parameters for salinity response function
   real(r8), allocatable :: sal_threshold(:) !threshold for salinity effects (ppt)
   real(r8), allocatable :: KM_salinity(:)    !half saturation constant for omotic inhibition function (ppt)
@@ -605,13 +605,7 @@ contains
     tide_coeff_amp(:)    = 0.0
     tide_coeff_phase(:)  = 0.0
     tide_coeff_period(:) = 1.0 ! Making period 0 would cause divide by 0 error in sinusoid calculation
-    !Marois and Stecher hydrology variables
-    allocate( hd  (0:mxpft) )
-    allocate( hn  (0:mxpft) )
-    allocate( hl  (0:mxpft) )
-    allocate( Kt  (0:mxpft) )
-    allocate( Ke  (0:mxpft) )
-    allocate( Kl  (0:mxpft) )
+
   !----------------------F.-M. Yuan (2018-03-23): user-defined parameter file ---------------------------------------------------------------------
     allocate( needleleaf         (0:mxpft) )
     allocate( nonvascular        (0:mxpft) )
@@ -1031,18 +1025,18 @@ contains
    call ncd_io('sfcflow_ratescale',sfcflow_ratescale, 'read', ncid, readvar=readv, posNOTonfile=.true.)
    if (.not. readv) sfcflow_ratescale = 7.0e-5_r8 ! Probably better to have default be zero for safety
    !Marois and Stecher hydrology variables
-   call ncd_io('hd', hd(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
-   if ( .not. readv ) hd(:) = 0.0
-   call ncd_io('hn', hn(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
-   if ( .not. readv ) hn(:) = 0.0
-   call ncd_io('hl', hl(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
-   if ( .not. readv ) hl(:) = 0.0
-   call ncd_io('Kt', Kt(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
-   if ( .not. readv ) Kt(:) = 0.0
-   call ncd_io('Ke', Ke(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
-   if ( .not. readv ) Ke(:) = 0.0
-   call ncd_io('Kl', Kl(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
-   if ( .not. readv ) Kl(:) = 0.0
+   call ncd_io('hd', hd, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+   if ( .not. readv ) hd = 0.0
+   call ncd_io('hn', hn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+   if ( .not. readv ) hn = 0.0
+   call ncd_io('hl', hl, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+   if ( .not. readv ) hl = 0.0
+   call ncd_io('Kt', Kt, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+   if ( .not. readv ) Kt = 0.5
+   call ncd_io('Ke', Ke, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+   if ( .not. readv ) Ke = 1.0
+   call ncd_io('Kl', Kl, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+   if ( .not. readv ) Kl = 0.01
 #endif
 
     call ncd_io('phen_a', phen_a, 'read', ncid, readvar=readv, posNOTonfile=.true.)
