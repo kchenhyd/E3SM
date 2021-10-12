@@ -930,7 +930,25 @@ contains
           enddo
        end do
 
-
+       !water level from Maroi and Stecher 2021 to qflux
+       !divide water level differences by 1000 to convert mm to m
+       !hd,hn,hl,Kt,Ke,Kl all need to be in mm
+#if (defined MARSH)
+       if (h2osfc(2) >= (h2osfc(1)+humhol_ht)) then
+         qflx_lat_aqu(c) = (h2osfc(2)-h2osfc(1))/(1000*2) !send half to marsh, keep half in tide channel
+       elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hd) then
+         qflx_lat_aqu(c) = 0.0
+       elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hn) then 
+         qflx_lat_aqu(1) = Kt*(h2osfc(2)-(humhol_ht-zwt(1)*1000))/1000
+         qflx_lat_aqu(2) = -1*qflx_lat_aqu(1)
+       elseif (h2osfc(2) <= hd) then
+         qflx_lat_aqu(2) = ((humhol_ht-zwt(1)-hl)*Ke)/1000 !not multiplying by porosity yet
+         qflx_lat_aqu(1) = -1*qflx_lat_aqu(2)
+       elseif (h2osfc(2) <= (hl + 0.01)) then
+         qflx_lat_aqu(2) = Kl/1000 !not multiplying by porosity yet
+         qflx_lat_aqu(1) = -1*qflx_lat_aqu(2)
+       endif
+#endif    
        !============================== QCHARGE =========================================
        ! Water table changes due to qcharge
        do fc = 1, num_hydrologyc
