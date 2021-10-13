@@ -134,7 +134,9 @@ contains
     integer                             :: count
 
     associate(& 
-         decomp_cpools_vr => col_cs%decomp_cpools_vr   &
+         decomp_cpools_vr => col_cs%decomp_cpools_vr , &
+         DOC_vr           => col_cs%DOC_vr           , &
+         DIC_vr           => col_cs%DIC_vr             &
          )
 
     count = 0
@@ -162,6 +164,24 @@ contains
                    do k = 1, ndecomp_pools
                       decomp_cpools_vr(c,j,k) = cur_data%data_real_3d(c,j,k)
                    enddo
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_STATE_DOC_VERTICALLY_RESOLVED)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevdecomp_full
+                   DOC_vr(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_STATE_DIC_VERTICALLY_RESOLVED)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevdecomp_full
+                   DIC_vr(c,j) = cur_data%data_real_2d(c,j)
                 enddo
              enddo
              cur_data%is_set = .true.

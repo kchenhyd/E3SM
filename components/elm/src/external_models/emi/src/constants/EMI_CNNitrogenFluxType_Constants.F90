@@ -14,5 +14,6 @@ module EMI_CNNitrogenFluxType_Constants
   integer, parameter, public :: E2L_FLUX_SMINN_TO_PLANT_VERTICALLY_RESOLVED     = 2208
   integer, parameter, public :: E2L_FLUX_SMIN_NO3_TO_PLANT_VERTICALLY_RESOLVED  = 2209
   integer, parameter, public :: E2L_FLUX_SMIN_NH4_TO_PLANT_VERTICALLY_RESOLVED  = 2210
+  integer, parameter, public :: E2L_FLUX_NO3_RUNOFF                             = 2211
 
 end module EMI_CNNitrogenFluxType_Constants

@@ -216,7 +216,11 @@ module ColumnDataType
     real(r8), pointer :: totlitc_end          (:)    => null()
     real(r8), pointer :: totsomc_end          (:)    => null()
     real(r8), pointer :: decomp_som2c_vr      (:,:)  => null()
-    real(r8), pointer :: cropseedc_deficit    (:)    => null()
+    real(r8), pointer :: cropseedc_deficit    (:)    => null()    
+    real(r8), pointer :: DOC_vr               (:,:)  => null() ! gC/m2
+    real(r8), pointer :: DIC_vr               (:,:)  => null() ! gC/m2
+    real(r8), pointer :: totDOC               (:)  => null() ! gC/m2
+    real(r8), pointer :: totDIC               (:)  => null() ! gC/m2
 
   contains
     procedure, public :: Init    => col_cs_init
@@ -1983,6 +1987,10 @@ contains
     allocate(this%totsomc_1m           (begc:endc))     ; this%totsomc_1m           (:)     = nan
     allocate(this%totlitc              (begc:endc))     ; this%totlitc              (:)     = nan
     allocate(this%totsomc              (begc:endc))     ; this%totsomc              (:)     = nan
+    allocate(this%DOC_vr    (begc:endc,1:nlevdecomp_full))                   ; this%DOC_vr    (:,:)   = 0.0_r8
+    allocate(this%DIC_vr    (begc:endc,1:nlevdecomp_full))                   ; this%DIC_vr    (:,:)   = 0.0_r8
+    allocate(this%totDOC    (begc:endc))                   ; this%totDOC    (:)   = 0.0_r8
+    allocate(this%totDIC    (begc:endc))                   ; this%totDIC    (:)   = 0.0_r8
 
     !-----------------------------------------------------------------------
     ! initialize history fields for select members of col_cs
@@ -2098,6 +2106,18 @@ contains
 
 
        end if
+
+      if(use_alquimia) then
+         this%DOC_vr(begc:endc,:) = spval
+         call hist_addfld2d (fname='DOC_vr', units='gC/m^3',  type2d='levdcmp', &
+            avgflag='A', long_name='Soil dissolved organic carbon vr', &
+               ptr_col=this%DOC_vr,default='inactive')
+
+         this%DIC_vr(begc:endc,:) = spval
+         call hist_addfld2d (fname='DIC_vr', units='gC/m^3',  type2d='levdcmp', &
+            avgflag='A', long_name='Soil dissolved inorganic carbon vr', &
+               ptr_col=this%DIC_vr,default='inactive')
+      endif
 
     else if ( carbon_type == 'c13' ) then
        this%decomp_cpools_vr(begc:endc,:,:) = spval
@@ -3016,6 +3036,12 @@ contains
        end do
     end do
 
+    do fc = 1, num_soilc
+      c = filter_soilc(fc)
+      this%totDOC(c) = dot_sum(this%DOC_vr(c,1:nlevdecomp),dzsoi_decomp(1:nlevdecomp)) 
+      this%totDIC(c) = dot_sum(this%DIC_vr(c,1:nlevdecomp),dzsoi_decomp(1:nlevdecomp)) 
+   enddo
+
     do fc = 1,num_soilc
        c = filter_soilc(fc)
 
@@ -3030,6 +3056,7 @@ contains
             this%cwdc(c)     + &
             this%totlitc(c)  + &
             this%totsomc(c)  + &
+            this%totDIC(c) + this%totDOC(c) + &  ! For alquimia, also include DIC and DOC here. Should be zero otherwise
             this%totprodc(c) + &
             this%totvegc(c)
 
@@ -3042,6 +3069,7 @@ contains
             this%totlitc(c)  + &
             this%totsomc(c)  + &
             this%totprodc(c) + &
+            this%totDIC(c) + this%totDOC(c) + &  ! For alquimia, also include DIC and DOC here. Should be zero otherwise
             this%ctrunc(c)   + &
             this%cropseedc_deficit(c)
 
@@ -5312,8 +5340,8 @@ contains
     allocate(this%qflx_grnd_irrig        (begc:endc))             ; this%qflx_grnd_irrig      (:)   = nan
     allocate(this%qflx_over_supply       (begc:endc))             ; this%qflx_over_supply     (:)   = nan
     allocate(this%qflx_irr_demand        (begc:endc))             ; this%qflx_irr_demand      (:)   = nan
-    allocate(this%qflx_lat_aqu           (begc:endc))             ; this%qflx_lat_aqu         (:)   = nan
-    allocate(this%qflx_lat_aqu_layer     (begc:endc,1:nlevgrnd))  ; this%qflx_lat_aqu_layer   (:,:) = nan
+    allocate(this%qflx_lat_aqu           (begc:endc))             ; this%qflx_lat_aqu         (:)   = 0._r8
+    allocate(this%qflx_lat_aqu_layer     (begc:endc,1:nlevgrnd))  ; this%qflx_lat_aqu_layer   (:,:) = 0._r8
     allocate(this%qflx_surf_input        (begc:endc))             ; this%qflx_surf_input         (:)   = nan   
     allocate(this%qflx_tide              (begc:endc))             ; this%qflx_tide            (:)   = nan !TAO
 
@@ -6837,14 +6865,14 @@ contains
        end do
 
 
-    elseif (is_active_betr_bgc .or. use_alquimia) then
-
+    elseif (is_active_betr_bgc) then
        do fc = 1, num_soilc
           c = filter_soilc(fc)
           this%hr(c) = dot_sum(this%hr_vr(c,1:nlevdecomp),dzsoi_decomp(1:nlevdecomp))
        enddo
     endif
-
+    ! Alquimia should have directly set this%hr based on calculated surface flux
+    
     ! some zeroing
     do fc = 1,num_soilc
        c = filter_soilc(fc)
