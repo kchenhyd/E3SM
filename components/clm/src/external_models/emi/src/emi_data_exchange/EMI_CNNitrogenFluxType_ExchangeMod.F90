@@ -165,7 +165,8 @@ contains
          gross_nmin_vr        => col_nf%gross_nmin_vr        , &
          sminn_to_plant_vr    => col_nf%sminn_to_plant_vr    , &
          smin_no3_to_plant_vr => col_nf%smin_no3_to_plant_vr , &
-         smin_nh4_to_plant_vr => col_nf%smin_nh4_to_plant_vr   &
+         smin_nh4_to_plant_vr => col_nf%smin_nh4_to_plant_vr , &
+         smin_no3_runoff      => col_nf%smin_no3_runoff        &
          )
 
     count = 0
@@ -237,6 +238,13 @@ contains
                 do j = 1, nlevdecomp_full
                    smin_nh4_to_plant_vr(c,j) = cur_data%data_real_2d(c,j)
                 enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_FLUX_NO3_RUNOFF)
+             do fc = 1, num_filter
+                c = filter(fc)
+                smin_no3_runoff(c) = cur_data%data_real_1d(c)
              enddo
              cur_data%is_set = .true.
 
