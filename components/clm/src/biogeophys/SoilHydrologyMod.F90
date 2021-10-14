@@ -696,26 +696,7 @@ contains
                 h2osfc_tide = max(h2osfc_tide + tide_baseline, 0.0)
                !  qflx_tide(c) = (h2osfc(c)-h2osfc_before)/dtime
                 qflx_lat_aqu(2) = qflx_lat_aqu(2) + (h2osfc_tide-h2osfc(c))/dtime
-                
-                       !water level from Maroi and Stecher 2021 to qflux
-       !divide water level differences by 1000 to convert mm to m
-       !hd,hn,hl,Kt,Ke,Kl all need to be in mm
-   if (h2osfc(2) >= (h2osfc(1)+humhol_ht)) then
-      qflx_lat_aqu(1) = qflx_lat_aqu(1) + (h2osfc(2)-h2osfc(1))/(1000*2)/dtime !divide excess surface water between two columns
-      qflx_lat_aqu(2) = qflx_lat_aqu(2) + -1*qflx_lat_aqu(1)
-   elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hd) then
-      qflx_lat_aqu(c) = 0.0
-   !elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hn) then 
-   !        qflx_lat_aqu(1) = Kt*(h2osfc(2)-(humhol_ht-zwt(1)*1000)/1000 
-   !        qflx_lat_aqu(2) = -1*qflx_lat_aqu(1)
-   elseif (h2osfc(2) <= hd .and. h2osfc(2) > hl) then
-      qflx_lat_aqu(2) = qflx_lat_aqu(2) + ((humhol_ht-zwt(1)-hl)*Ke)/(1000) !not multiplying by porosity yet
-      qflx_lat_aqu(1) = qflx_lat_aqu(1) + -1*qflx_lat_aqu(2)
-   elseif (h2osfc(2) <= (hl + 0.01)) then
-      qflx_lat_aqu(2) = qflx_lat_aqu(2) + Kl/1000 !not multiplying by porosity yet
-      qflx_lat_aqu(1) = qflx_lat_aqu(1) + -1*qflx_lat_aqu(2)
-   endif
-#endif    
+                   
                 ! If flooded water surface of one column is higher than the other, add faster flow since aquifer transfer (ka parameters) is slow
                 !if(h2osfc(2)>0 .and. h2osfc(2)>(h2osfc(1)+humhol_ht*1000.0)) then
                 !  qflx_lat_aqu(2) = qflx_lat_aqu(2) - min((h2osfc(2)-(h2osfc(1)+humhol_ht*1000.0))*sfcflow_ratescale,h2osfc(2)*0.5/dtime)
@@ -725,8 +706,8 @@ contains
                 !  qflx_lat_aqu(1) = qflx_lat_aqu(1) - min((h2osfc(1)-(h2osfc(2)-humhol_ht*1000.0))*sfcflow_ratescale,h2osfc(1)*0.5/dtime)
                 !endif
 
-            !endif
-!#endif
+            endif
+#endif
 
 
              !7. remove drainage from h2osfc and add to qflx_infl
@@ -934,20 +915,20 @@ contains
        !divide water level differences by 1000 to convert mm to m
        !hd,hn,hl,Kt,Ke,Kl all need to be in mm
 #if (defined MARSH)
-       if (h2osfc(2) >= (h2osfc(1)+humhol_ht)) then
-         qflx_lat_aqu(c) = (h2osfc(2)-h2osfc(1))/(1000*2) !send half to marsh, keep half in tide channel
-       elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hd) then
-         qflx_lat_aqu(c) = 0.0
-       elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hn) then 
-         qflx_lat_aqu(1) = Kt*(h2osfc(2)-(humhol_ht-zwt(1)*1000))/1000
-         qflx_lat_aqu(2) = -1*qflx_lat_aqu(1)
-       elseif (h2osfc(2) <= hd) then
-         qflx_lat_aqu(2) = ((humhol_ht-zwt(1)-hl)*Ke)/1000 !not multiplying by porosity yet
-         qflx_lat_aqu(1) = -1*qflx_lat_aqu(2)
-       elseif (h2osfc(2) <= (hl + 0.01)) then
-         qflx_lat_aqu(2) = Kl/1000 !not multiplying by porosity yet
-         qflx_lat_aqu(1) = -1*qflx_lat_aqu(2)
-       endif
+       !if (h2osfc(2) >= (h2osfc(1)+humhol_ht)) then
+       !  qflx_lat_aqu(c) = (h2osfc(2)-h2osfc(1))/(1000*2) !send half to marsh, keep half in tide channel
+       !elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hd) then
+       !  qflx_lat_aqu(c) = 0.0
+       !elseif (h2osfc(2) < (h2osfc(1)+humhol_ht) .and. h2osfc(2) > hn) then 
+       !  qflx_lat_aqu(1) = Kt*(h2osfc(2)-(humhol_ht-zwt(1)*1000))/1000
+       !  qflx_lat_aqu(2) = -1*qflx_lat_aqu(1)
+       !elseif (h2osfc(2) <= hd) then
+       !  qflx_lat_aqu(2) = ((humhol_ht-zwt(1)-hl)*Ke)/1000 !not multiplying by porosity yet
+       !  qflx_lat_aqu(1) = -1*qflx_lat_aqu(2)
+       !elseif (h2osfc(2) <= (hl + 0.01)) then
+       !  qflx_lat_aqu(2) = Kl/1000 !not multiplying by porosity yet
+       !  qflx_lat_aqu(1) = -1*qflx_lat_aqu(2)
+       !endif
 #endif    
        !============================== QCHARGE =========================================
        ! Water table changes due to qcharge
