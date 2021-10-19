@@ -16,7 +16,12 @@ module ChemStateType
   !----------------------------------------------------
   type, public :: chemstate_type
 
-     real(r8), pointer :: soil_pH(:,:)    ! soil pH (-nlevsno+1:nlevgrnd)
+     real(r8), pointer :: soil_pH(:,:)    ! soil pH (1:nlevdecomp_full)
+     real(r8), pointer :: soil_salinity(:,:)    ! soil pH (1:nlevdecomp_full)
+     real(r8), pointer :: soil_O2(:,:)    ! soil pH (1:nlevdecomp_full)
+     real(r8), pointer :: soil_sulfate(:,:)    ! soil pH (1:nlevdecomp_full)
+     real(r8), pointer :: soil_FeOxide(:,:)    ! soil pH (1:nlevdecomp_full)
+     real(r8), pointer :: soil_Fe2(:,:)    ! soil pH (1:nlevdecomp_full)
 
      ! Data that must be saved for chemistry model (via alquimia)
      ! Sizes are set by alquimia
@@ -56,6 +61,7 @@ module ChemStateType
     ! use ExternalModelInterfaceMod, only : EMI_Init_EM
     ! use ExternalModelConstants   , only : EM_ID_ALQUIMIA
     use clm_varctl               , only : use_alquimia
+    use histFileMod     , only : hist_addfld2d
 
     implicit none
 
@@ -71,7 +77,44 @@ module ChemStateType
     !   call EMI_Init_EM(EM_ID_ALQUIMIA)
     ! endif
 
+    associate(begc => bounds%begc, endc => bounds%endc )
+
     call this%InitAllocate(bounds)
+
+    if(use_alquimia) then
+      this%soil_pH(begc:endc,:) = 0.0_r8
+      call hist_addfld2d (fname='soil_pH', units='-',  type2d='levdcmp', &
+        avgflag='A', long_name='Soil pH', &
+            ptr_col=this%soil_pH,default='inactive')
+
+      this%soil_salinity(begc:endc,:) = 0.0_r8
+      call hist_addfld2d (fname='soil_salinity', units='ppt',  type2d='levdcmp', &
+        avgflag='A', long_name='Soil salinity', &
+            ptr_col=this%soil_salinity,default='inactive')
+
+      this%soil_O2(begc:endc,:) = 0.0_r8
+      call hist_addfld2d (fname='soil_O2', units='mol m-3',  type2d='levdcmp', &
+        avgflag='A', long_name='Soil porewater dissolved oxygen', &
+            ptr_col=this%soil_O2,default='inactive')
+
+      this%soil_sulfate(begc:endc,:) = 0.0_r8
+      call hist_addfld2d (fname='soil_sulfate', units='mol m-3',  type2d='levdcmp', &
+        avgflag='A', long_name='Soil porewater dissolved sulfate', &
+            ptr_col=this%soil_sulfate,default='inactive')
+
+      this%soil_Fe2(begc:endc,:) = 0.0_r8
+      call hist_addfld2d (fname='soil_Fe2', units='mol m-3',  type2d='levdcmp', &
+        avgflag='A', long_name='Soil porewater dissolved Fe(II)', &
+            ptr_col=this%soil_Fe2,default='inactive')
+
+      this%soil_FeOxide(begc:endc,:) = 0.0_r8
+      call hist_addfld2d (fname='soil_FeOxide', units='mol Fe m-3',  type2d='levdcmp', &
+        avgflag='A', long_name='Soil iron oxide mineral concentration', &
+            ptr_col=this%soil_FeOxide,default='inactive')
+        
+    endif
+
+    end associate
 
   end subroutine Init
   
@@ -126,6 +169,12 @@ module ChemStateType
       allocate(this%cation_exchange_capacity(begc:endc,lbj:ubj,1:alquimia_num_ion_exchange_sites))
       allocate(this%aux_ints(begc:endc,lbj:ubj,1:alquimia_num_aux_ints))
       allocate(this%aux_doubles(begc:endc,lbj:ubj,1:alquimia_num_aux_doubles))
+
+      allocate(this%soil_salinity(begc:endc, lbj:ubj))
+      allocate(this%soil_O2(begc:endc, lbj:ubj))
+      allocate(this%soil_sulfate(begc:endc, lbj:ubj))
+      allocate(this%soil_FeOxide(begc:endc, lbj:ubj))
+      allocate(this%soil_Fe2(begc:endc, lbj:ubj))
     endif
 
   end subroutine InitAllocate
