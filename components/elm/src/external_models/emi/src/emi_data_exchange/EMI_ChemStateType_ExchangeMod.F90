@@ -259,6 +259,11 @@ contains
 
     associate(& 
          soil_ph                       => chemstate_vars%soil_ph                       , &
+         soil_salinity                 => chemstate_vars%soil_salinity                 , &
+         soil_O2                       => chemstate_vars%soil_O2                       , &
+         soil_sulfate                  => chemstate_vars%soil_sulfate                  , &
+         soil_Fe2                      => chemstate_vars%soil_Fe2                      , &
+         soil_FeOxide                  => chemstate_vars%soil_FeOxide                  , &
          water_density                 => chemstate_vars%water_density                 , &
          aqueous_pressure              => chemstate_vars%aqueous_pressure              , &
          total_mobile                  => chemstate_vars%total_mobile                  , &
@@ -294,6 +299,51 @@ contains
                 c = filter(fc)
                 do j = 1, nlevsoi
                    soil_ph(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_STATE_SOIL_SALINITY)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevsoi
+                   soil_salinity(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_STATE_SOIL_O2)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevsoi
+                   soil_O2(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_STATE_SOIL_SULFATE)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevsoi
+                   soil_sulfate(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_STATE_SOIL_FE2)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevsoi
+                   soil_Fe2(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_STATE_SOIL_FE_OXIDE)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevsoi
+                   soil_FeOxide(c,j) = cur_data%data_real_2d(c,j)
                 enddo
              enddo
              cur_data%is_set = .true.

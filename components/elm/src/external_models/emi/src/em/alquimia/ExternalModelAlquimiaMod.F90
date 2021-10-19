@@ -76,6 +76,13 @@ module ExternalModelAlquimiaMod
     integer :: index_e2l_state_DOC
     integer :: index_e2l_state_DIC
 
+    integer :: index_e2l_state_ph
+    integer :: index_e2l_state_salinity
+    integer :: index_e2l_state_sulfate
+    integer :: index_e2l_state_O2
+    integer :: index_e2l_state_Fe2
+    integer :: index_e2l_state_FeOxide
+
     integer :: index_e2l_flux_Nimm
     integer :: index_e2l_flux_Nimp
     integer :: index_e2l_flux_Nmin
@@ -139,6 +146,7 @@ module ExternalModelAlquimiaMod
     integer                              :: plantNO3uptake_pool_number,plantNH4uptake_pool_number
     integer                              :: plantNO3demand_pool_number,plantNH4demand_pool_number
     integer                              :: plantNO3uptake_reaction_number,plantNH4uptake_reaction_number
+    integer                              :: Hplus_pool_number,sulfate_pool_number,O2_pool_number,chloride_pool_number,Fe2_pool_number,FeOH3_pool_number
     logical, pointer, dimension(:)       :: is_dissolved_gas
     real(r8),pointer,dimension(:)        :: DOC_content,DIC_content ! Also add extra SOM content tracker for pools beyond ELM's litter and SOM?
     real(r8),pointer,dimension(:)        :: bc ! Boundary condition (len of chem_sizes%num_primary)
@@ -445,6 +453,30 @@ contains
     id                                             = E2L_FLUX_NO3_RUNOFF
     call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
     this%index_e2l_flux_NO3runoff      = index
+
+    id                                             = E2L_STATE_SOIL_PH
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_ph              = index
+
+    id                                             = E2L_STATE_SOIL_SALINITY
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_salinity             = index
+
+    id                                             = E2L_STATE_SOIL_O2
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_O2              = index
+
+    id                                             = E2L_STATE_SOIL_SULFATE
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_sulfate              = index
+
+    id                                             = E2L_STATE_SOIL_FE2
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_Fe2              = index
+
+    id                                             = E2L_STATE_SOIL_FE_OXIDE
+    call e2l_list%AddDataByID(id, number_em_stages, em_stages, index)
+    this%index_e2l_state_FeOxide              = index
 
     ! These need to be exchanged in both stages
     deallocate(em_stages)
@@ -822,6 +854,7 @@ end subroutine EMAlquimia_Coldstart
     integer  , pointer, dimension(:,:,:)   :: aux_ints_l2e, aux_ints_e2l
     real(r8) , pointer, dimension(:,:)    :: qflx_adv_l2e, qflx_lat_aqu_l2e
     real(r8) , pointer, dimension(:,:)    :: DOC_e2l, DIC_e2l
+    real(r8) , pointer, dimension(:,:)    :: pH_e2l, O2_e2l, salinity_e2l, sulfate_e2l, Fe2_e2l, FeOxide_e2l
     real(r8)                            :: CO2_before
     real(r8), parameter                 :: minval = 1.e-30_r8 ! Minimum value to pass to PFLOTRAN to avoid numerical errors with concentrations of 0
 
@@ -910,6 +943,13 @@ end subroutine EMAlquimia_Coldstart
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_DIC , DIC_e2l)
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_DOC , DOC_e2l)
 
+    call e2l_list%GetPointerToReal2D(this%index_e2l_state_pH , pH_e2l)
+    call e2l_list%GetPointerToReal2D(this%index_e2l_state_salinity , salinity_e2l)
+    call e2l_list%GetPointerToReal2D(this%index_e2l_state_O2 , O2_e2l)
+    call e2l_list%GetPointerToReal2D(this%index_e2l_state_sulfate , sulfate_e2l)
+    call e2l_list%GetPointerToReal2D(this%index_e2l_state_Fe2 , Fe2_e2l)
+    call e2l_list%GetPointerToReal2D(this%index_e2l_state_FeOxide , FeOxide_e2l)
+
     ! First check if pools have been mapped between ELM and Alquimia
     if(.not. associated(this%carbon_pool_mapping)) then
       call this%map_alquimia_pools()
@@ -919,56 +959,9 @@ end subroutine EMAlquimia_Coldstart
      ! TODO: Transport needs to be integrated somehow. 
     do fc = 1, num_soilc
       c = filter_soilc(fc)
-      ! Calculate rate of change due to transport for each mobile species
-      ! do k = 1, this%chem_sizes%num_primary
-      !   ! Need to 
-      !   !   1. set adv_flux (vertical flow)
-      !   !   2. Set diffusion coefficient as a function of moisture for each layer
-      !   !     2a. Calculate gas diffusion/equilibration for specific species. Or set high diffus for dissolved gases and skip the gas phase?
-      !   !     2b. Figure boundary condition for dissolved gases. Assume top layer is equil with atmosphere? Unless there is surface water?
-      !   !   3. Set source/sink for each layer using lateral transport/runoff and boundary condition for inputs
-      !   !   4. Figure out Strang splitting approach (half time step before then after chemistry)
-      !   !   5. Bubbles??
-      !   !
-      !   ! Maybe it makes more sense to run the whole column at the same time step. Move adv_diff into run_onestep and 
-      !   ! have it go back to the top of the column and run all layers over if there is a time step cut
-      !   call advection_diffusion(total_mobile_l2e(c,:,k),adv_flux(c,:),diffus(c,:),source(c,:),dt,transport_change_rate(:,k))
-      ! enddo
+
          do j = 1, nlevdecomp  
-             ! First copy Alquimia data from ELM to alquimia data structure
-              ! call this%copy_ELM_to_Alquimia(c,j,water_density_l2e,&
-              !                               aqueous_pressure_l2e,&
-              !                               total_mobile_l2e,&
-              !                               total_immobile_l2e,&
-              !                               mineral_volume_fraction_l2e,&
-              !                               mineral_specific_surface_area_l2e,&
-              !                               surface_site_density_l2e,&
-              !                               cation_exchange_capacity_l2e,&
-              !                               aux_doubles_l2e,&
-              !                               aux_ints_l2e) 
-             
 
-             ! Should we read aqueous pressure in from ELM?
-             ! Set volume and saturation?
-             ! Saturation determines volume of water and concentration of aqueous species
-             ! Not sure if volume actually matters
-
-             ! Set rate constants in properties.aqueous_kinetic_rate_cnst if in hands_on mode
-             ! Should we check if we are in hands_on mode?
-             ! Discussions with Peter, Fengming, Scott, Ethan suggested we should avoid setting rate constants this way and let PFLOTRAN handle it
-             ! to make linking identical BGC with ATS or other models easier
-            !  call c_f_pointer(this%chem_properties%aqueous_kinetic_rate_cnst%data, alquimia_rates_data, (/this%chem_properties%aqueous_kinetic_rate_cnst%size/))
-            !  call c_f_pointer(this%chem_state%total_mobile%data, alquimia_mobile_data, (/this%chem_sizes%num_primary/))
-            !  call c_f_pointer(this%chem_state%total_immobile%data, alquimia_immobile_data, (/this%chem_sizes%num_primary/))
-
-            !  do poolnum=1,ndecomp_pools
-            !    if(this%pool_reaction_mapping(poolnum)>0) then
-            !     !  write(iulog, '(a,i3,a,i3,1x,a,e12.3)'), 'Setting pool',poolnum,' -> alquimia reaction ',this%pool_reaction_mapping(poolnum),'kinetic rate const to',decomp_k(c,j,poolnum)
-            !      alquimia_rates_data(this%pool_reaction_mapping(poolnum)) = decomp_k(c,j,poolnum)
-            !    endif
-            !  enddo
-             
-             
              ! Set soil carbon and nitrogen from land model
              ! Convert soil C,N from g/m3 to mol/m3. Assumes pool is defined as immobile, not aqueous
              ! May need to deal with case that pools are all zero (initial condition) which PFLOTRAN will not be able to solve.
@@ -996,13 +989,14 @@ end subroutine EMAlquimia_Coldstart
              ! Assumes alquimia is running in hands-off mode: Biomass term of N uptake microbial reaction is set to plant NO3 or NH4 demand
              ! This assumes the rate constant of the reaction is set to 1 in the input deck!
             if(this%plantNH4demand_pool_number>0) then
-              total_immobile_l2e(c,j,this%plantNH4demand_pool_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*porosity_l2e(c,j)*max(h2o_liqvol(c,j)/porosity_l2e(c,j),0.01))
+              ! Limits demand to not be too much higher than N availability to avoid cutting to tiny time step at low available N
+              total_immobile_l2e(c,j,this%plantNH4demand_pool_number) = min(plantNdemand_l2e(c,j),(nh4_l2e(c,j)+no3_l2e(c,j))/dt*2)/natomw/(1000.0*porosity_l2e(c,j)*max(h2o_liqvol(c,j)/porosity_l2e(c,j),0.01))
               if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
                   total_immobile_l2e(c,j,this%plantNH4demand_pool_number) = total_immobile_l2e(c,j,this%plantNH4demand_pool_number)*nh4_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
               total_immobile_l2e(c,j,this%plantNH4demand_pool_number) = max(total_immobile_l2e(c,j,this%plantNH4demand_pool_number),minval)
             endif
             if(this%plantNO3demand_pool_number>0) then
-              total_immobile_l2e(c,j,this%plantNO3demand_pool_number) = plantNdemand_l2e(c,j)/natomw/(1000.0*porosity_l2e(c,j)*max(h2o_liqvol(c,j)/porosity_l2e(c,j),0.01))
+              total_immobile_l2e(c,j,this%plantNO3demand_pool_number) = min(plantNdemand_l2e(c,j),(nh4_l2e(c,j)+no3_l2e(c,j))/dt*2)/natomw/(1000.0*porosity_l2e(c,j)*max(h2o_liqvol(c,j)/porosity_l2e(c,j),0.01))
               if(this%NO3_pool_number>0 .and. this%NH4_pool_number>0 .and. (no3_l2e(c,j)+nh4_l2e(c,j)>0)) &
                 total_immobile_l2e(c,j,this%plantNO3demand_pool_number) = total_immobile_l2e(c,j,this%plantNO3demand_pool_number)*no3_l2e(c,j)/(nh4_l2e(c,j)+no3_l2e(c,j))
               total_immobile_l2e(c,j,this%plantNO3demand_pool_number) = max(total_immobile_l2e(c,j,this%plantNO3demand_pool_number),minval)
@@ -1125,9 +1119,45 @@ end subroutine EMAlquimia_Coldstart
                 DIC_e2l(c,j) = DIC_e2l(c,j) + total_mobile_e2l(c,j,k)*catomw*this%DIC_content(k)
               enddo
 
+              if(this%Hplus_pool_number>0) then
+                  pH_e2l(c,j) = -log10(total_mobile_e2l(c,j,this%Hplus_pool_number))
+              else
+                  pH_e2l(c,j) = 0.0_r8
+              endif
 
-              ! TODO: Set ELM DOC and DIC pools. Will need to take into account DOC species with more than one C atom (e.g. acetate)
-              
+              if(this%sulfate_pool_number>0) then
+                  sulfate_e2l(c,j) = total_mobile_e2l(c,j,this%sulfate_pool_number)
+              else
+                  sulfate_e2l(c,j) = 0.0_r8
+              endif
+
+              if(this%O2_pool_number>0) then
+                  O2_e2l(c,j) = total_mobile_e2l(c,j,this%O2_pool_number)
+              else
+                  O2_e2l(c,j) = 0.0_r8
+              endif
+
+              if(this%chloride_pool_number>0) then
+                  ! Chloride concentration needs to be converted to ppt (by mass) in water = mg/L. mol/L Cl- * 35.453 g/mol * 1.8066 g salt/g Cl * 1000 mg/g
+                  salinity_e2l(c,j) = total_mobile_e2l(c,j,this%chloride_pool_number)/(1000.0*porosity_l2e(c,j)*max(h2o_liqvol(c,j)/porosity_l2e(c,j),0.01))*35.453*1.80655*1000.0
+              else
+                  salinity_e2l(c,j) = 0.0_r8
+              endif
+
+              if(this%Fe2_pool_number>0) then
+                  Fe2_e2l(c,j) = total_mobile_e2l(c,j,this%Fe2_pool_number)
+              else
+                  Fe2_e2l(c,j) = 0.0_r8
+              endif
+
+              if(this%FeOH3_pool_number>0) then
+                  ! Minerals need to be divided by molar volume (m3/mol) since alquimia units are m3/m3
+                  ! Molar volume of Fe(OH)3 is 34.3600 cm3/mol from hanford.dat
+                  FeOxide_e2l(c,j) = mineral_volume_fraction_e2l(c,j,this%FeOH3_pool_number)/34.36e-6
+              else
+                  FeOxide_e2l(c,j) = 0.0_r8
+              endif
+
               if(this%NO3_pool_number>0) no3_e2l(c,j) = total_mobile_e2l(c,j,this%NO3_pool_number)*natomw
               if(this%NH4_pool_number>0) nh4_e2l(c,j) = total_mobile_e2l(c,j,this%NH4_pool_number)*natomw
 
@@ -1549,6 +1579,29 @@ end subroutine EMAlquimia_Coldstart
       endif
       if(trim(alq_poolname) == 'Acetate-') this%DOC_content(ii) = 2.0_r8
     enddo
+
+    ! Find other important aqueous pools to pass back to ELM
+    call c_f_pointer(this%chem_metadata%primary_names%data, name_list, (/this%chem_sizes%num_primary/))
+
+    this%Hplus_pool_number = find_alquimia_pool('H+',name_list,this%chem_sizes%num_primary)
+    this%sulfate_pool_number = find_alquimia_pool('SO4--',name_list,this%chem_sizes%num_primary)
+    this%O2_pool_number = find_alquimia_pool('O2(aq)',name_list,this%chem_sizes%num_primary)
+    this%chloride_pool_number = find_alquimia_pool('Cl-',name_list,this%chem_sizes%num_primary)
+    this%Fe2_pool_number = find_alquimia_pool('Fe++',name_list,this%chem_sizes%num_primary)
+
+    if(this%Hplus_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'H+', '<-> Alquimia pool',pool_num
+    if(this%sulfate_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'SO4--', '<-> Alquimia pool',pool_num
+    if(this%O2_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'O2(aq)', '<-> Alquimia pool',pool_num
+    if(this%chloride_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'Cl-', '<-> Alquimia pool',pool_num
+    if(this%Fe2_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'Fe++', '<-> Alquimia pool',pool_num
+    
+    ! Minerals might be trickier because they could have different stoichiometries and molar volumes
+    call c_f_pointer(this%chem_metadata%mineral_names%data, name_list, (/this%chem_sizes%num_minerals/))
+    this%FeOH3_pool_number = find_alquimia_pool('Fe(OH)3 VF',name_list,this%chem_sizes%num_minerals)
+    if(this%FeOH3_pool_number>0) write(iulog,'(a,6x,a,i3,1x)'),'Fe(OH)3', '<-> Alquimia mineral',pool_num
+
+
+
   end subroutine map_alquimia_pools
 
   
@@ -1654,17 +1707,9 @@ end subroutine EMAlquimia_Coldstart
     else
       write(iulog,*),'Plant NH4 demand pool not in alquimia'
     endif
+
+    if(this%O2_pool_number>0) write(iulog,'(a,i4,e12.5)'),'O2',this%O2_pool_number,alquimia_mobile_data(this%O2_pool_number)
     
-    write(iulog,*) "Rate constants"
-    do poolnum=1, ndecomp_cascade_transitions
-      if(this%pool_reaction_mapping(decomp_cascade_con%cascade_donor_pool(poolnum))>0) then
-        write(iulog,*),trim(decomp_cascade_con%cascade_step_name(poolnum)),alquimia_rates_data(this%pool_reaction_mapping(decomp_cascade_con%cascade_donor_pool(poolnum)))
-      endif
-    enddo
-
-    if(this%plantNH4uptake_reaction_number>0) write(iulog,*),'Plant NH4 uptake',alquimia_rates_data(this%plantNH4uptake_reaction_number)
-    if(this%plantNO3uptake_reaction_number>0) write(iulog,*),'Plant NO3 uptake',alquimia_rates_data(this%plantNO3uptake_reaction_number)
-
     write(iulog,*),'Porosity =',this%chem_state%porosity
 
   end subroutine print_pools
@@ -1978,7 +2023,7 @@ end subroutine EMAlquimia_Coldstart
           aux_ints,porosity,temperature,volume,saturation,adv_flux,lat_flow,lat_bc,lat_flux,surf_bc,surf_flux)
 
         if(ncuts>max_cuts) max_cuts=ncuts
-        write(iulog,*),'Converged =',this%chem_status%converged,"ncuts =",ncuts,'(Substep 1)'
+        ! write(iulog,*),'Converged =',this%chem_status%converged,"ncuts =",ncuts,'(Substep 1)'
         
         ! The second one starts from the maximum number of cuts from the first one so it doesn't waste time retrying a bunch of failed timestep lengths
         do ii=1,2**(max_cuts-(num_cuts+1))
