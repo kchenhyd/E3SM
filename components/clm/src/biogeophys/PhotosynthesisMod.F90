@@ -2758,12 +2758,8 @@ contains
             !KO  In this case, bsun and bsha should have the same value and btran 
             !KO  can be set to either bsun or bsha.  But this needs to be checked.
             !btran(p) = bsun(p)
-<<<<<<< HEAD
          !end if
-=======
-         !end if -SLL 4/27/21
 
->>>>>>> added osm_inhib function to btran in hydraulic stress subroutine, commented out other btran functions
       end do
 
     end associate
