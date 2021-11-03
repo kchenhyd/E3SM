@@ -407,7 +407,7 @@ contains
                     (smp_node - smpsc(veg_pp%itype(p))) / (smpso(veg_pp%itype(p)) - smpsc(veg_pp%itype(p))), 1._r8)
                   rresis(p,j) = rresis(p,j)*osm_inhib(veg_pp%itype(p))
                   
-               !else
+               else
                   rresis(p,j) = min( (eff_porosity(c,j)/watsat(c,j))* &
                     (smp_node - smpsc(veg_pp%itype(p))) / (smpso(veg_pp%itype(p)) - smpsc(veg_pp%itype(p))), 1._r8)
                endif
