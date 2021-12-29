@@ -166,7 +166,8 @@ contains
          sminn_to_plant_vr    => col_nf%sminn_to_plant_vr    , &
          smin_no3_to_plant_vr => col_nf%smin_no3_to_plant_vr , &
          smin_nh4_to_plant_vr => col_nf%smin_nh4_to_plant_vr , &
-         smin_no3_runoff      => col_nf%smin_no3_runoff        &
+         smin_no3_runoff      => col_nf%smin_no3_runoff      , &
+         DON_runoff           => col_nf%DON_runoff             &
          )
 
     count = 0
@@ -245,6 +246,13 @@ contains
              do fc = 1, num_filter
                 c = filter(fc)
                 smin_no3_runoff(c) = cur_data%data_real_1d(c)
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_FLUX_DON_RUNOFF)
+             do fc = 1, num_filter
+                c = filter(fc)
+                DON_runoff(c) = cur_data%data_real_1d(c)
              enddo
              cur_data%is_set = .true.
 

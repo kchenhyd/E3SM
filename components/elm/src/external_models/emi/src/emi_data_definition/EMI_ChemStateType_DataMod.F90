@@ -436,6 +436,17 @@ contains
        dim3_beg_name  =  dimname_one
        dim3_end_name  =  dimname_alquimia_num_aux_ints
        data_found   =  .true.
+
+    case(E2L_STATE_CHEM_DT)
+       id_val         =  E2L_STATE_CHEM_DT
+       name_val       =  'chem dt'
+       long_name_val  =  'chem dt: EM to ELM'
+       units_val      =  '[-]'
+       is_real_type   =  .true.
+       ndim           =  1
+       dim1_beg_name  =  dimname_begc
+       dim1_end_name  =  dimname_endc
+       data_found   =  .true.
     end select
     
   end subroutine EMI_ChemStateType_DataInfoByID
