@@ -158,7 +158,9 @@ contains
     associate(& 
          decomp_cascade_hr_vr => col_cf%decomp_cascade_hr_vr , &
          hr_vr                => col_cf%hr_vr                , &
-         hr                   => col_cf%hr                     &
+         hr                   => col_cf%hr                   , &
+         DIC_runoff           => col_cf%DIC_runoff           , &
+         DOC_runoff           => col_cf%DOC_runoff             &
          )
 
     count = 0
@@ -203,6 +205,20 @@ contains
              do fc = 1, num_filter
                 c = filter(fc)
                 hr(c) = cur_data%data_real_1d(c)
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_FLUX_DIC_RUNOFF)
+             do fc = 1, num_filter
+                c = filter(fc)
+                DIC_runoff(c) = cur_data%data_real_1d(c)
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_FLUX_DOC_RUNOFF)
+             do fc = 1, num_filter
+                c = filter(fc)
+                DOC_runoff(c) = cur_data%data_real_1d(c)
              enddo
              cur_data%is_set = .true.
 

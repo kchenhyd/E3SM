@@ -273,7 +273,8 @@ contains
          surface_site_density          => chemstate_vars%surface_site_density          , &
          cation_exchange_capacity      => chemstate_vars%cation_exchange_capacity      , &
          aux_doubles                   => chemstate_vars%aux_doubles                   , &
-         aux_ints                      => chemstate_vars%aux_ints                        &
+         aux_ints                      => chemstate_vars%aux_ints                      , &
+         chem_dt                       => chemstate_vars%chem_dt                         &
          )
 
     count = 0
@@ -451,6 +452,13 @@ contains
                       aux_ints(c,j,k) = cur_data%data_int_3d(c,j,k)
                    enddo
                 enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_STATE_CHEM_DT)
+             do fc = 1, num_filter
+                c = filter(fc)
+                chem_dt(c) = cur_data%data_real_1d(c)
              enddo
              cur_data%is_set = .true.
 

@@ -109,6 +109,19 @@ contains
        dim2_beg_name  =  dimname_one
        dim2_end_name  =  dimname_nlevdecomp_full
        data_found   =  .true.
+
+    case(E2L_STATE_SOIL_CARBONATE)
+       id_val         =  E2L_STATE_SOIL_CARBONATE
+       name_val       =  'Soil carbonate'
+       long_name_val  =  'Soil carbonate: EM to ELM'
+       units_val      =  '[g C m^-3]'
+       is_real_type   =  .true.
+       ndim           =  2
+       dim1_beg_name  =  dimname_begc
+       dim1_end_name  =  dimname_endc
+       dim2_beg_name  =  dimname_one
+       dim2_end_name  =  dimname_nlevsoi
+       data_found   =  .true.
     end select
     
   end subroutine EMI_CNCarbonStateType_DataInfoByID

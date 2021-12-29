@@ -31,5 +31,6 @@ module EMI_ChemStateType_Constants
   integer, parameter, public :: E2L_STATE_CATION_EXCHANGE_CAPACITY       = 1825
   integer, parameter, public :: E2L_STATE_AUX_DOUBLES                    = 1826
   integer, parameter, public :: E2L_STATE_AUX_INTS                       = 1827
+  integer, parameter, public :: E2L_STATE_CHEM_DT                        = 1828
 
 end module EMI_ChemStateType_Constants

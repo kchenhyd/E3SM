@@ -46,6 +46,8 @@ module ChemStateType
      real(r8), pointer :: cation_exchange_capacity(:,:,:) 
      real(r8), pointer :: aux_doubles(:,:,:) 
      integer,  pointer :: aux_ints(:,:,:)
+
+     real(r8), pointer :: chem_dt(:)
     
   contains
     procedure, public  :: Init         
@@ -61,7 +63,7 @@ module ChemStateType
     ! use ExternalModelInterfaceMod, only : EMI_Init_EM
     ! use ExternalModelConstants   , only : EM_ID_ALQUIMIA
     use clm_varctl               , only : use_alquimia
-    use histFileMod     , only : hist_addfld2d
+    use histFileMod     , only : hist_addfld2d, hist_addfld1d
 
     implicit none
 
@@ -111,6 +113,11 @@ module ChemStateType
       call hist_addfld2d (fname='soil_FeOxide', units='mol Fe m-3',  type2d='levdcmp', &
         avgflag='A', long_name='Soil iron oxide mineral concentration', &
             ptr_col=this%soil_FeOxide,default='inactive')
+
+      this%chem_dt(begc:endc) = 0.0_r8
+      call hist_addfld1d (fname='chem_dt', units='s', &
+        avgflag='A', long_name='Chemistry solver time step', &
+            ptr_col=this%chem_dt,default='inactive')
         
     endif
 
@@ -175,6 +182,8 @@ module ChemStateType
       allocate(this%soil_sulfate(begc:endc, lbj:ubj))
       allocate(this%soil_FeOxide(begc:endc, lbj:ubj))
       allocate(this%soil_Fe2(begc:endc, lbj:ubj))
+
+      allocate(this%chem_dt(begc:endc))
     endif
 
   end subroutine InitAllocate

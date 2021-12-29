@@ -116,6 +116,7 @@ contains
     ! !USES:
     use clm_varpar             , only : nlevdecomp_full
     use clm_varpar             , only : ndecomp_pools
+    use clm_varpar             , only : nlevsoi
     !
     implicit none
     !
@@ -136,7 +137,8 @@ contains
     associate(& 
          decomp_cpools_vr => col_cs%decomp_cpools_vr , &
          DOC_vr           => col_cs%DOC_vr           , &
-         DIC_vr           => col_cs%DIC_vr             &
+         DIC_vr           => col_cs%DIC_vr           , &
+         SIC_vr           => col_cs%SIC_vr             &
          )
 
     count = 0
@@ -182,6 +184,15 @@ contains
                 c = filter(fc)
                 do j = 1, nlevdecomp_full
                    DIC_vr(c,j) = cur_data%data_real_2d(c,j)
+                enddo
+             enddo
+             cur_data%is_set = .true.
+
+          case (E2L_STATE_SOIL_CARBONATE)
+             do fc = 1, num_filter
+                c = filter(fc)
+                do j = 1, nlevsoi
+                   SIC_vr(c,j) = cur_data%data_real_2d(c,j)
                 enddo
              enddo
              cur_data%is_set = .true.
