@@ -62,7 +62,7 @@ module ChemStateType
 
     ! use ExternalModelInterfaceMod, only : EMI_Init_EM
     ! use ExternalModelConstants   , only : EM_ID_ALQUIMIA
-    use clm_varctl               , only : use_alquimia
+    use elm_varctl               , only : use_alquimia
     use histFileMod     , only : hist_addfld2d, hist_addfld1d
 
     implicit none
@@ -193,11 +193,11 @@ module ChemStateType
 
     use restUtilMod     , only : restartvar
     use ncdio_pio       , only : file_desc_t,ncd_double, ncd_int
-    use clm_varpar      , only : alquimia_num_primary, alquimia_num_minerals,&
+    use elm_varpar      , only : alquimia_num_primary, alquimia_num_minerals,&
                                  alquimia_num_surface_sites, alquimia_num_ion_exchange_sites, &
                                  alquimia_num_aux_doubles, alquimia_num_aux_ints
-    use clm_varctl               , only : use_alquimia
-    use clm_varpar            , only : nlevdecomp_full
+    use elm_varctl               , only : use_alquimia
+    use elm_varpar            , only : nlevdecomp_full
 
     implicit none
     !

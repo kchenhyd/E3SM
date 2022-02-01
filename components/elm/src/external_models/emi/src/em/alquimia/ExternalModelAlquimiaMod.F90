@@ -17,7 +17,6 @@ module ExternalModelAlquimiaMod
   use EMI_Landunit_Constants
   use EMI_SoilHydrologyType_Constants
   use EMI_SoilStateType_Constants
-  use EMI_ColumnDataType_Constants
   use EMI_WaterFluxType_Constants
   use EMI_WaterStateType_Constants
   use EMI_CNCarbonStateType_Constants
@@ -579,9 +578,9 @@ contains
                                             AllocateAlquimiaAuxiliaryOutputData, &
                                             AllocateAlquimiaGeochemicalCondition
                                             
-    use clm_varctl, only : alquimia_inputfile,alquimia_engine_name,alquimia_IC_name,alquimia_handsoff
+    use elm_varctl, only : alquimia_inputfile,alquimia_engine_name,alquimia_IC_name,alquimia_handsoff
 
-    use clm_varpar            , only : alquimia_num_primary, alquimia_num_minerals,&
+    use elm_varpar            , only : alquimia_num_primary, alquimia_num_minerals,&
                                        alquimia_num_surface_sites, alquimia_num_ion_exchange_sites, &
                                        alquimia_num_aux_doubles, alquimia_num_aux_ints
     use landunit_varcon, only : istcrop,istsoil
@@ -712,7 +711,7 @@ contains
 use shr_kind_mod              , only : r8 => shr_kind_r8
 use abortutils                , only : endrun
 use shr_log_mod               , only : errMsg => shr_log_errMsg
-use clm_varctl                , only : iulog
+use elm_varctl                , only : iulog
 use ExternalModelConstants    , only : EM_ALQUIMIA_SOLVE_STAGE,EM_ALQUIMIA_COLDSTART_STAGE
                                       
 !
@@ -748,7 +747,7 @@ end subroutine EMAlquimia_Solve
 
 subroutine EMAlquimia_Coldstart(this, clump_rank, l2e_list, e2l_list, bounds_clump)
 
-  use clm_varpar, only : nlevdecomp
+  use elm_varpar, only : nlevdecomp
 
   class(em_alquimia_type)              :: this
   integer              , intent(in)    :: clump_rank
@@ -1471,12 +1470,12 @@ end subroutine EMAlquimia_Coldstart
   subroutine map_alquimia_pools(this)
 
 
-    use clm_varpar, only : ndecomp_pools
+    use elm_varpar, only : ndecomp_pools
     use CNDecompCascadeConType, only : decomp_cascade_con
-    use clm_varctl, only : alquimia_IC_name,alquimia_CO2_name,&
+    use elm_varctl, only : alquimia_IC_name,alquimia_CO2_name,&
         alquimia_NO3_name,alquimia_NH4_name,alquimia_Nimp_name,alquimia_Nmin_name,alquimia_Nimm_name,&
         alquimia_plantNO3uptake_name,alquimia_plantNH4uptake_name,alquimia_plantNO3demand_name,alquimia_plantNH4demand_name
-    use clm_varpar, only : nlevdecomp, ndecomp_pools, ndecomp_cascade_transitions
+    use elm_varpar, only : nlevdecomp, ndecomp_pools, ndecomp_cascade_transitions
 
     class(em_alquimia_type)              :: this
 
@@ -1744,7 +1743,7 @@ end subroutine EMAlquimia_Coldstart
   
   subroutine print_alquimia_state(this,c,j)
 
-    use clm_varpar, only : ndecomp_pools,ndecomp_cascade_transitions
+    use elm_varpar, only : ndecomp_pools,ndecomp_cascade_transitions
     use iso_c_binding, only : c_f_pointer, c_double
     use c_f_interface_module, only : c_f_string_ptr
     use CNDecompCascadeConType, only : decomp_cascade_con
@@ -1880,8 +1879,8 @@ end subroutine EMAlquimia_Coldstart
           porosity,temperature,volume,saturation,adv_flux,lat_flow,lat_bc,lat_flux,surf_bc,surf_flux)
     
   use c_f_interface_module, only : c_f_string_ptr
-  use clm_varpar       , only : nlevdecomp
-  use clm_varcon, only : dzsoi_decomp
+  use elm_varpar       , only : nlevdecomp
+  use elm_varcon, only : dzsoi_decomp
   use shr_infnan_mod         , only : isnan => shr_infnan_isnan
   
   implicit none
@@ -2303,8 +2302,8 @@ subroutine advection_diffusion(conc_trcr,adv_flux,diffus,source,surf_bc,dtime,co
   ! Based on SoilLittVertTranspMod, which implements S. V. Patankar, Numerical Heat Transfer and Fluid Flow, Series in Computational Methods in Mechanics and Thermal Sciences, Hemisphere Publishing Corp., 1980. Chapter 5
   ! Not sure if this belongs here or somewhere else. Is it bad to do this in the EMI subroutine?
 
-  use clm_varpar       , only : nlevdecomp
-  use clm_varcon       , only : zsoi, zisoi, dzsoi_decomp
+  use elm_varpar       , only : nlevdecomp
+  use elm_varcon       , only : zsoi, zisoi, dzsoi_decomp
 
   real(r8), intent(in) :: conc_trcr(1:nlevdecomp) ! Bulk concentration (e.g. mol/m3). Or should it be concentration in water??
   real(r8), intent(in) :: adv_flux(1:nlevdecomp+1)    ! (m/s), vertical into layer (down is negative)

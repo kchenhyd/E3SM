@@ -233,13 +233,13 @@ contains
     ! Unpack data for ALM chemstate_vars from EM
     !
     ! !USES:
-    use clm_varpar             , only : nlevsoi
-    use clm_varpar             , only : alquimia_num_primary
-    use clm_varpar             , only : alquimia_num_minerals
-    use clm_varpar             , only : alquimia_num_surface_sites
-    use clm_varpar             , only : alquimia_num_ion_exchange_sites
-    use clm_varpar             , only : alquimia_num_aux_doubles
-    use clm_varpar             , only : alquimia_num_aux_ints
+    use elm_varpar             , only : nlevsoi
+    use elm_varpar             , only : alquimia_num_primary
+    use elm_varpar             , only : alquimia_num_minerals
+    use elm_varpar             , only : alquimia_num_surface_sites
+    use elm_varpar             , only : alquimia_num_ion_exchange_sites
+    use elm_varpar             , only : alquimia_num_aux_doubles
+    use elm_varpar             , only : alquimia_num_aux_ints
     !
     implicit none
     !
