@@ -1012,7 +1012,7 @@ for mct, etc.
     <base> -O -fconvert=big-endian -ffree-line-length-none -ffixed-line-length-none -fno-range-check</base>
     <append compile_threaded="TRUE"> -fopenmp </append>
     <append DEBUG="TRUE"> -g -Wall </append>
-    <append> -I$(NETCDF_PATH)/include -I$(HDF5_PATH)/include </append>
+    <!-- <append> -I$(NETCDF_PATH)/include -I$(HDF5_PATH)/include </append> -->
     <!-- <append MODEL="clm"> -I/lustre/or-hydra/cades-ccsi/$USER/models/pflotran-interface/src/clm-pflotran</append> -->
   </FFLAGS>
   <FIXEDFLAGS>

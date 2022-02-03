@@ -17,7 +17,6 @@ module ExternalModelAlquimiaMod
   use EMI_Landunit_Constants
   use EMI_SoilHydrologyType_Constants
   use EMI_SoilStateType_Constants
-  use EMI_ColumnDataType_Constants
   use EMI_WaterFluxType_Constants
   use EMI_WaterStateType_Constants
   use EMI_CNCarbonStateType_Constants
@@ -27,6 +26,7 @@ module ExternalModelAlquimiaMod
   use EMI_ChemStateType_Constants
   use EMI_ColumnWaterStateType_Constants
   use EMI_ColumnWaterFluxType_Constants
+  use EMI_ColumnEnergyStateType_Constants
 
 #ifdef USE_ALQUIMIA_LIB
    use AlquimiaContainers_module, only : AlquimiaSizes,AlquimiaProblemMetaData,AlquimiaProperties,&
