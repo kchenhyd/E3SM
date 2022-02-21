@@ -26,6 +26,7 @@ module ExternalModelAlquimiaMod
   use EMI_ChemStateType_Constants
   use EMI_ColumnWaterStateType_Constants
   use EMI_ColumnWaterFluxType_Constants
+  use EMI_ColumnEnergyStateType_Constants
 
 #ifdef USE_ALQUIMIA_LIB
    use AlquimiaContainers_module, only : AlquimiaSizes,AlquimiaProblemMetaData,AlquimiaProperties,&
