@@ -94,7 +94,7 @@ contains
 #endif
     use elm_varctl, only : use_petsc_thermal_model
     use elm_varctl, only : use_em_stub
-    use elm_varctl, only : use_em_alquimia
+    use elm_varctl, only : use_alquimia
     !
     implicit none
     !
