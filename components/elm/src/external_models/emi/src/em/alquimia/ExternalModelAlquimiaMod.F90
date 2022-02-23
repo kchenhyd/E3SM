@@ -997,6 +997,8 @@ end subroutine EMAlquimia_Coldstart
     if(.not. associated(this%carbon_pool_mapping)) then
       call this%map_alquimia_pools()
 
+      c = filter_soilc(1)
+
       ! At this point, also make sure boundary condition is set
       ! Initialize the state for the cell
       this%chem_properties%volume = dz(c,1)
@@ -1014,7 +1016,13 @@ end subroutine EMAlquimia_Coldstart
       endif
 
       this%chem_state%porosity = porosity_l2e(c,1)
+      if(isnan(porosity_l2e(c,1)) .or. porosity_l2e(c,1)<0.01) then
+        write(iulog,*),'Porosity = ',porosity_l2e(c,1)
+        write(iulog,*),'Boundary condition: ',this%bc(1:this%chem_sizes%num_primary)
+        call endrun(msg='Alquimia: Problem with porosity in boundary condition')
+      endif
 
+      ! Does this need to loop over all columns?
       call this%copy_Alquimia_to_ELM(c,1,water_density_e2l,&
                 aqueous_pressure_e2l,&
                 total_mobile_e2l,free_mobile,&
@@ -1638,14 +1646,14 @@ end subroutine EMAlquimia_Coldstart
     ! Find plant NO3 and NH4 uptake reactions to rate constants can be set
     ! This is trickier for Microbial reactions because they are named by stoichiometry and representation depends on precision in input deck
     ! Best long-term solution is probably running in hands-off mode to avoid this entirely
-    alq_poolname = '1.0000e+00 NH4+  -> 1.0000e+00 Tracer2' ! Todo: Fix this! !
+    alq_poolname = '1.00000000e+00 NH4+  -> 1.00000000e+00 Tracer2' ! Todo: Fix this! !
     this%plantNH4uptake_reaction_number = find_alquimia_pool(alq_poolname,name_list,this%chem_metadata%aqueous_kinetic_names%size)
     if(this%plantNH4uptake_reaction_number>0) then 
       write(iulog,'(a, i3, 1X, a)'),'ELM plant NH4+ uptake <-> Alquimia reaction',this%plantNH4uptake_reaction_number,trim(alq_poolname)
     else
       write(iulog,'(a,1x,a)'),'WARNING: No match for plant NH4+ uptake reaction',trim(alq_poolname)
     endif
-    alq_poolname = '1.0000e+00 NO3-  -> 1.0000e+00 Tracer' ! Todo: Fix this! !
+    alq_poolname = '1.00000000e+00 NO3-  -> 1.00000000e+00 Tracer' ! Todo: Fix this! !
     this%plantNO3uptake_reaction_number = find_alquimia_pool(alq_poolname,name_list,this%chem_metadata%aqueous_kinetic_names%size)
     if(this%plantNO3uptake_reaction_number>0) then 
       write(iulog,'(a, i3, 1X, a)'),'ELM plant NO3- uptake <-> Alquimia reaction',this%plantNO3uptake_reaction_number,trim(alq_poolname)

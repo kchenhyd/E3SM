@@ -955,6 +955,10 @@ contains
                c2l_scale_type = 'unity', l2g_scale_type = 'unity')
       call c2g(bounds, col_som_c_yield(bounds%begc:bounds%endc), grc_som_c_yield(bounds%begg:bounds%endg), &
                c2l_scale_type = 'unity', l2g_scale_type = 'unity')
+      call c2g(bounds, col_cf%DOC_runoff(bounds%begc:bounds%endc), grc_cf%DOC_runoff(bounds%begg:bounds%endg), &
+               c2l_scale_type = 'unity', l2g_scale_type = 'unity')
+      call c2g(bounds, col_cf%DIC_runoff(bounds%begc:bounds%endc), grc_cf%DIC_runoff(bounds%begg:bounds%endg), &
+               c2l_scale_type = 'unity', l2g_scale_type = 'unity')
 
       dt = real( get_step_size(), r8 )
       nstep = get_nstep()
@@ -969,6 +973,8 @@ contains
          if (ero_ccycle) then
             grc_coutputs(g) = grc_coutputs(g) + grc_som_c_yield(g)
          end if
+
+         if (use_alquimia) grc_coutputs(g) = grc_coutputs(g) + grc_cf%DOC_runoff(g) + grc_cf%DIC_runoff(g)
 
          grc_errcb(g) = (grc_cinputs(g) - grc_coutputs(g))*dt - (end_totc(g) - beg_totc(g))
 
