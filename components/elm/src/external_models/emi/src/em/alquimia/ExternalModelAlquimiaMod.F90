@@ -756,6 +756,8 @@ subroutine EMAlquimia_Coldstart(this, clump_rank, l2e_list, e2l_list, bounds_clu
   class(emi_data_list) , intent(inout) :: e2l_list
   type(bounds_type)    , intent (in)   :: bounds_clump
 
+#ifdef USE_ALQUIMIA_LIB
+
   real(r8) , pointer, dimension(:,:)   ::  porosity_l2e, dz, h2o_liqvol
   real(r8) , pointer, dimension(:,:)   ::  water_density_e2l,aqueous_pressure_e2l
   real(r8) , pointer, dimension(:,:,:) ::  total_mobile_e2l
@@ -791,7 +793,6 @@ subroutine EMAlquimia_Coldstart(this, clump_rank, l2e_list, e2l_list, bounds_clu
   call e2l_list%GetPointerToReal3D(this%index_e2l_aux_doubles, aux_doubles_e2l)
   call e2l_list%GetPointerToInt3D(this%index_e2l_aux_ints, aux_ints_e2l)
 
-#ifdef USE_ALQUIMIA_LIB
   do fc = 1, num_soilc
     c = filter_soilc(fc)
 
