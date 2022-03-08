@@ -765,12 +765,15 @@ contains
 
             ! update offset_counter and test for the end of the offset period
             if (offset_flag(p) == 1.0_r8) then
+#if (defined MARSH)
                if (c==2) then
                   offset_counter(p) = offset_counter(p)
                else if (c==1) then
                   offset_counter(p) = offset_counter(p) - dt
                endif
-
+#else
+               offset_counter(p) = offset_counter(p) - dt
+#endif
                ! if this is the end of the offset_period, reset phenology
                ! flags and indices
                if (offset_counter(p) == 0.0_r8) then
@@ -790,12 +793,15 @@ contains
             ! update onset_counter and test for the end of the onset period
             if (onset_flag(p) == 1.0_r8) then
                ! decrement counter for onset period
+#if (defined MARSH)
                if (c==2) then
                   onset_counter(p) = onset_counter(p)
                else if (c==1) then
                   onset_counter(p) = onset_counter(p) - dt
                endif
-
+#else
+               onset_counter(p) = onset_counter(p) - dt
+#endif
                   ! if this is the end of the onset period, reset phenology
                   ! flags and indices
                if (onset_counter(p) == 0.0_r8) then
@@ -998,32 +1004,37 @@ contains
                onset_counter = 0._r8 !SL this might interfere with arctic stuff but fixes random fall onset_counter > 0
                !dormant_flag(p) = 1._r8
             endif
-         end if ! end if seasonal deciduous
+         
+            write(iulog,*) 'onset_gdd(p)'
+            write(iulog,*) onset_gdd(p)
+            write(iulog,*) 'onset_gddflag(p)'
+            write(iulog,*) onset_gddflag(p)
+            write(iulog,*) 'onset_flag'
+            write(iulog,*) onset_flag(p)
+            write(iulog,*) 'onset_counter'
+            write(iulog,*) onset_counter(p)
+            write(iulog,*) 'offset_flag'
+            write(iulog,*) offset_flag(p)
+            write(iulog,*) 'offset_counter(p)'
+            write(iulog,*) offset_counter(p)
+            write(iulog,*) 'dormant_flag'
+            write(iulog,*) dormant_flag(p)
+            write(iulog,*) 'ws_flag'
+            write(iulog,*) ws_flag
+            write(iulog,*) 'crit_onset_gdd'
+            write(iulog,*) crit_onset_gdd
+            write(iulog,*) 'soilt'
+            write(iulog,*) soilt
+            write(iulog,*) 'crit_dayl'
+            write(iulog,*) crit_dayl
+            write(iulog,*) 'dayl'
+            write(iulog,*) dayl(g)
+            write(iulog,*) 'leafc_storage_to_xfer(p)'
+            write(iulog,*) leafc_storage_to_xfer(p)
+            write(iulog,*) 'leafc_storage(p)'
+            write(iulog,*) leafc_storage(p)
 
-         write(iulog,*) 'onset_gdd(p)'
-         write(iulog,*) onset_gdd(p)
-         write(iulog,*) 'onset_gddflag(p)'
-         write(iulog,*) onset_gddflag(p)
-         write(iulog,*) 'onset_flag'
-         write(iulog,*) onset_flag(p)
-         write(iulog,*) 'onset_counter'
-         write(iulog,*) onset_counter(p)
-         write(iulog,*) 'offset_flag'
-         write(iulog,*) offset_flag(p)
-         write(iulog,*) 'offset_counter(p)'
-         write(iulog,*) offset_counter(p)
-         write(iulog,*) 'dormant_flag'
-         write(iulog,*) dormant_flag(p)
-         write(iulog,*) 'ws_flag'
-         write(iulog,*) ws_flag
-         write(iulog,*) 'crit_onset_gdd'
-         write(iulog,*) crit_onset_gdd
-         write(iulog,*) 'soilt'
-         write(iulog,*) soilt
-         write(iulog,*) 'crit_dayl'
-         write(iulog,*) crit_dayl
-         write(iulog,*) 'dayl'
-         write(iulog,*) dayl(g)
+         end if ! end if seasonal deciduous
 
       end do ! end of pft loop
      
@@ -1206,8 +1217,8 @@ contains
          g = veg_pp%gridcell(p)
 
          if (stress_decid(ivt(p)) == 1._r8) then
-            soilt = t_soisno(c,3)
-            psi = soilpsi(c,3)
+            soilt = t_soisno(1,3)
+            psi = soilpsi(1,3)
 
             ! onset gdd sum from Biome-BGC, v4.1.2
             crit_onset_gdd = exp(crit_gdd1(ivt(p)) + 0.13_r8*(annavg_t2m(p) - SHR_CONST_TKFRZ))
@@ -1215,8 +1226,15 @@ contains
             ! update offset_counter and test for the end of the offset period
             if (offset_flag(p) == 1._r8) then
                ! decrement counter for offset period
+#if (defined MARSH)
+               if (c==1) then
+                  offset_counter(p) = offset_counter(p) - dt
+               else if (c==2) then
+                  offset_counter(p) = offset_counter(p)
+               endif
+#else
                offset_counter(p) = offset_counter(p) - dt
-
+#endif    
                ! if this is the end of the offset_period, reset phenology
                ! flags and indices
                if (offset_counter(p) == 0._r8) then
@@ -1236,8 +1254,15 @@ contains
             ! update onset_counter and test for the end of the onset period
             if (onset_flag(p) == 1.0_r8) then
                ! decrement counter for onset period
+#if (defined MARSH)
+               if (c==1) then
+                  onset_counter(p) = onset_counter(p) - dt
+               else if (c==2) then
+                  onset_counter(p) = onset_counter(p)
+               endif
+#else
                onset_counter(p) = onset_counter(p) - dt
-
+#endif
                ! if this is the end of the onset period, reset phenology
                ! flags and indices
                if (onset_counter(p) == 0.0_r8) then
@@ -1530,7 +1555,44 @@ contains
                   deadcrootp_storage_to_xfer(p) = deadcrootp_storage(p) * bgtr(p)
                end if
             end if
+            
+            write(iulog,*) 'dormant_flag'
+            write(iulog,*) dormant_flag(p)
+
+            write(iulog,*) 'onset_flag'
+            write(iulog,*) onset_flag(p)
+            write(iulog,*) 'onset_counter'
+            write(iulog,*) onset_counter(p)
+
+            write(iulog,*) 'soilt'
+            write(iulog,*) soilt
+            write(iulog,*) 'onset_gdd(p)'
+            write(iulog,*) onset_gdd(p)
+            write(iulog,*) 'crit_onset_gdd'
+            write(iulog,*) crit_onset_gdd
+            write(iulog,*) 'onset_fdd'
+            write(iulog,*) onset_fdd(p)
+            write(iulog,*) 'crit_onset_fdd'
+            write(iulog,*) crit_onset_fdd
            
+            write(iulog,*) 'onset_swi'
+            write(iulog,*) onset_swi(p)
+            write(iulog,*) 'crit_onset_swi'
+            write(iulog,*) crit_onset_swi
+
+            write(iulog,*) 'offset_flag'
+            write(iulog,*) offset_flag(p)
+            write(iulog,*) 'offset_counter(p)'
+            write(iulog,*) offset_counter(p)
+            write(iulog,*) 'crit_dayl'
+            write(iulog,*) crit_dayl
+            write(iulog,*) 'dayl'
+            write(iulog,*) dayl(g)
+            write(iulog,*) 'offset_swi'
+            write(iulog,*) offset_swi(p)
+            write(iulog,*) 'crit_offset_swi'
+            write(iulog,*) crit_offset_swi
+        
          end if ! end if stress deciduous
 
       end do ! end of pft loop
@@ -2602,7 +2664,14 @@ contains
                deadstemp_xfer_to_deadstemp(p)   = t1 * deadstemp_xfer(p)
                deadcrootp_xfer_to_deadcrootp(p) = t1 * deadcrootp_xfer(p)
             end if
-
+            write(iulog,*) 't1'
+            write(iulog,*) t1
+            write(iulog,*) 'leafc_xfer(p)'
+            write(iulog,*) leafc_xfer(p)
+            write(iulog,*) 'leafc_xfer_to_leafc(p)'
+            write(iulog,*) leafc_xfer_to_leafc(p)
+            write(iulog,*) 'frootc_xfer(p)'
+            write(iulog,*) frootc_xfer(p)
          end if ! end if onset period
 
          ! calculate the background rate of transfer growth (used for stress
@@ -2630,6 +2699,8 @@ contains
                deadstemp_xfer_to_deadstemp(p)   = deadstemp_xfer(p) / dt
                deadcrootp_xfer_to_deadcrootp(p) = deadcrootp_xfer(p) / dt
             end if
+         write(iulog,*) 'bgtr'
+         write(iulog,*) bgtr(p)
          end if ! end if bgtr
 
       end do ! end pft loop
@@ -2954,7 +3025,10 @@ contains
          end if ! end if offset period
 
       end do ! end pft loop
-
+      write(iulog,*) 'leafc(p)'
+      write(iulog,*) leafc(p)
+      write(iulog,*) 'frootc(p)'
+      write(iulog,*) frootc(p)
     end associate 
 
   end subroutine CNOffsetLitterfall

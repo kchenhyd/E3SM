@@ -1004,7 +1004,7 @@ contains
       if (.not. readv) call endrun(msg="Error: Must specify amp, period, and phase for each tide component: i = "//trim(tempname))
       ! salinity parameters
       call ncd_io('sal_threshold', sal_threshold(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
-      if ( .not. readv ) sal_threshold(:) = 1.8_r8 !placeholder value for now-update with more accurate -SLL
+      if ( .not. readv ) sal_threshold(:) = 100.8_r8 !placeholder value for now-update with more accurate -SLL
       call ncd_io('KM_salinity', KM_salinity(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
       if ( .not. readv ) KM_salinity(:) = 1.8_r8 !placeholder value for now-update with more accurate -SLL
       call ncd_io('osm_inhib', osm_inhib(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
