@@ -1023,7 +1023,7 @@ end subroutine EMAlquimia_Coldstart
         call endrun(msg='Alquimia: Problem with porosity in boundary condition')
       endif
 
-      ! Does this need to loop over all columns?
+      ! Does this need to loop over all columns?  cjw double check the following for debugging crazy O2
       call this%copy_Alquimia_to_ELM(c,1,water_density_e2l,&
                 aqueous_pressure_e2l,&
                 total_mobile_e2l,free_mobile,&
