@@ -2013,7 +2013,7 @@ end subroutine EMAlquimia_Coldstart
     ! write(iulog,*) 'adv_flux',adv_flux(c,:)
     ! write(iulog,*) 'source',source_term(:,k)/(porosity(c,:)*sat(:))
     ! write(iulog,*) 'total_mobile',total_mobile(c,:,k)/(porosity(c,:)*sat(:))
-    ! write(iulog,*) 'lat_flow',lat_flow(c,:)
+     write(iulog,*) 'lat_flow',lat_flow(c,:)
     ! write(iulog,*) 'porosity',porosity(c,:)
     ! write(iulog,*) 'saturation',sat(:) ! Need to account for when saturation is 0
     ! write(iulog,*),'Mobile spec',k,'Before: ',total_mobile(c,1:nlevdecomp,k)
