@@ -1117,7 +1117,7 @@ end subroutine EMAlquimia_Coldstart
               ! write(iulog,*),'Boundary condition',this%bc
               ! write(iulog,*),__LINE__,'adv_flow',qflx_adv_l2e(c,:)
               ! This changes total_mobile_l2e so we need to make sure we aren't using that for conservation checks
-
+              write(iulog,*),'qflx as lat_flow',qflx_lat_aqu_l2e    ! cjw print out qflx_alt_aqu_l2e because it is the lat_flow.
               call run_column_onestep(this, c, dt,0,max_cuts,&
                   water_density_l2e,&
                   aqueous_pressure_l2e,&
