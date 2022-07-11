@@ -584,7 +584,7 @@ contains
              else if (c .eq. 2) then
                 qflx_h2osfc_surf(c) = 0._r8
 
-
+             write(iulog,*), 'qflx_h2osfc_surfrate is ', qflx_h2osfc_surfrate
                 ! bsulman : Changed to use flexible set of parameters up to full NOAA tidal components (37 coefficients)
                 ! Tidal cycle is the sum of all the sinusoidal components
                !h2osfc_before = h2osfc(c)
