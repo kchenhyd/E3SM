@@ -584,7 +584,7 @@ contains
              else if (c .eq. 2) then
                 qflx_h2osfc_surf(c) = 0._r8
 
-             write(iulog,*), 'qflx_h2osfc_surfrate is ', qflx_h2osfc_surfrate !cjw print out 
+             ! write(iulog,*), 'qflx_h2osfc_surfrate is ', qflx_h2osfc_surfrate !cjw print out 
                 ! bsulman : Changed to use flexible set of parameters up to full NOAA tidal components (37 coefficients)
                 ! Tidal cycle is the sum of all the sinusoidal components
                !h2osfc_before = h2osfc(c)
@@ -683,7 +683,7 @@ contains
                  !changed from 0.01 to 0.90 TAO 6/4/2021
                  !water table
                  qflx_lat_aqu(:) = 0._r8
-               else
+               else                                                                        !cjw qflx_lat_aqu is lateral flux in aquifer which does not make sense to add it in soil lateral flux in top soil in marsh
                  qflx_lat_aqu(1) =  2._r8/(1._r8/ka_hu+1._r8/ka_ho) * (zwt_hu-zwt_ho- &
                      humhol_ht) / humhol_dist * sqrt(hol_frac/hum_frac)
                  qflx_lat_aqu(2) = -2._r8/(1._r8/ka_hu+1._r8/ka_ho) * (zwt_hu-zwt_ho- &
@@ -1024,7 +1024,7 @@ contains
     
              qflx_rsub_sat(c) = 0._r8
        !-  water table is below the soil column -----------------------------------
-             if(jwt(c) == nlevbed) then
+          if(jwt(c) == nlevbed) then
               if (qflx_lat_aqu(c).gt.0._r8) then
                 wa(c)  = wa(c) + qflx_lat_aqu(c) * dtime
                !wt(c)  = wa(c)
@@ -1053,6 +1053,9 @@ contains
                    qflx_lat_aqu_layer(c,j)=max(qflx_lat_aqu_layer(c,j),0._r8)
                    h2osoi_liq(c,j) = h2osoi_liq(c,j) + qflx_lat_aqu_layer(c,j)
                    qflx_lat_aqu_tot = qflx_lat_aqu_tot - qflx_lat_aqu_layer(c,j)
+
+                   write(iulog,*), 'qflx_lat_aqu_layer at column and layer is ', qflx_lat_aqu_layer(c,j),c,j !cjw print out 
+ 
                    !new code test DMR 4/29/13
                    if(s_y > 0._r8) zwt(c) = zwt(c) - qflx_lat_aqu_layer(c,j)/s_y/1000._r8
                    if (qflx_lat_aqu_tot <= 0.) then
@@ -1065,7 +1068,7 @@ contains
                        ! end if
                    end if
                  end do
-              else ! deepening water table (negative lateral flux)
+             else ! deepening water table (negative lateral flux)
                 !Remove from surface water first if available
                 if (h2osfc(c) .gt. 0) then ! .and. maxval(icefrac(c,1:jwt(c)+1)) .le. 0.9) then
                   h2osfc(c) = h2osfc(c) + qflx_lat_aqu_tot
@@ -1085,7 +1088,9 @@ contains
                    qflx_lat_aqu_layer(c,j)=min(qflx_lat_aqu_layer(c,j),0._r8)
                    h2osoi_liq(c,j) = h2osoi_liq(c,j) + qflx_lat_aqu_layer(c,j)
                    qflx_lat_aqu_tot = qflx_lat_aqu_tot - qflx_lat_aqu_layer(c,j)
-   
+
+                   write(iulog,*), 'qflx_lat_aqu_layer at column and layer is ', qflx_lat_aqu_layer(c,j),c,j !cjw print out 
+
                    if (qflx_lat_aqu_tot >= 0.) then
                       zwt(c) = zwt(c) - qflx_lat_aqu_layer(c,j)/s_y/1000._r8
                       exit
