@@ -65,7 +65,7 @@ module ExternalModelAlquimiaMod
     integer :: index_l2e_state_no3
     integer :: index_l2e_flux_plantNdemand
     integer :: index_l2e_flux_qflx_adv
-    integer :: index_l2e_flux_qflx_lat_aqu_layer
+    integer :: index_l2e_flux_qflx_lat_aqu !index_l2e_flux_qflx_lat_aqu_layer  cjw
     
     ! Solve data returned to land model
     integer :: index_e2l_state_decomp_cpools
@@ -346,7 +346,8 @@ contains
 
     id                                   = L2E_FLUX_SOIL_QFLX_LAT_COL
     call l2e_list%AddDataByID(id, number_em_stages, em_stages, index)
-    this%index_l2e_flux_qflx_lat_aqu_layer      = index
+    this%index_l2e_flux_qflx_lat_aqu      = index
+    !this%index_l2e_flux_qflx_lat_aqu_layer      = index
 
 
 
@@ -978,7 +979,8 @@ end subroutine EMAlquimia_Coldstart
     call l2e_list%GetPointerToInt3D(this%index_l2e_aux_ints, aux_ints_l2e)
 
     call l2e_list%GetPointerToReal2D(this%index_l2e_flux_qflx_adv       , qflx_adv_l2e     )
-    call l2e_list%GetPointerToReal2D(this%index_l2e_flux_qflx_lat_aqu_layer       , qflx_lat_aqu_l2e     )
+    call l2e_list%GetPointerToReal2D(this%index_l2e_flux_qflx_lat_aqu       , qflx_lat_aqu_l2e     )
+    !call l2e_list%GetPointerToReal2D(this%index_l2e_flux_qflx_lat_aqu_layer       , qflx_lat_aqu_l2e     )     !cjw change to qflx_lat_aqu
 
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_DIC , DIC_e2l)
     call e2l_list%GetPointerToReal2D(this%index_e2l_state_DOC , DOC_e2l)
@@ -1117,7 +1119,7 @@ end subroutine EMAlquimia_Coldstart
               ! write(iulog,*),'Boundary condition',this%bc
               ! write(iulog,*),__LINE__,'adv_flow',qflx_adv_l2e(c,:)
               ! This changes total_mobile_l2e so we need to make sure we aren't using that for conservation checks
-              write(iulog,*),'qflx as lat_flow',qflx_lat_aqu_l2e    ! cjw print out qflx_alt_aqu_l2e because it is the lat_flow.
+              write(iulog,*),'qflx as lat_flow',qflx_lat_aqu_l2e    ! cjw print out qflx_alt_aqu_l2e because it is the lat_flow. it is qflx_aqu_layer
               call run_column_onestep(this, c, dt,0,max_cuts,&
                   water_density_l2e,&
                   aqueous_pressure_l2e,&
