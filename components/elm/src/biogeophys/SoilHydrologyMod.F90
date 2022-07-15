@@ -727,7 +727,8 @@ contains
                   qflx_lat_aqu(1) = qflx_lat_aqu(1) - min((h2osfc(1)-(h2osfc(2)-humhol_ht*1000.0))*sfcflow_ratescale,h2osfc(1)*0.5/dtime)
                 endif
                 write(iulog,*), 'qflx_lat_aqu(1) after', qflx_lat_aqu(1)
-                write(iulog,*), 'qflx_lat_aqu(2) after', qflx_lat_aqu(2)                 
+                write(iulog,*), 'qflx_lat_aqu(2) after', qflx_lat_aqu(2)  
+                write(iulog,*), 'qflx_lat_aqu_layer at column and layer is ', qflx_lat_aqu_layer(c,j),c,j !cjw print out                
                 write(iulog,*), 'h2osfc(c) after', h2osfc(1), h2osfc(2) 
 #endif
              endif
@@ -775,6 +776,7 @@ contains
      !
      ! !DESCRIPTION:
      ! Calculate watertable, considering aquifer recharge but no drainage.
+     ! added by jiaze wang: jwt represent subsurface water table and zwt represent surface water table; jwt must below land surface and zwt must above land surface
      !
      ! !USES:
       !$acc routine seq
@@ -1053,9 +1055,6 @@ contains
                    qflx_lat_aqu_layer(c,j)=max(qflx_lat_aqu_layer(c,j),0._r8)
                    h2osoi_liq(c,j) = h2osoi_liq(c,j) + qflx_lat_aqu_layer(c,j)
                    qflx_lat_aqu_tot = qflx_lat_aqu_tot - qflx_lat_aqu_layer(c,j)
-
-                   write(iulog,*), 'qflx_lat_aqu_layer at column and layer is ', qflx_lat_aqu_layer(c,j),c,j !cjw print out 
- 
                    !new code test DMR 4/29/13
                    if(s_y > 0._r8) zwt(c) = zwt(c) - qflx_lat_aqu_layer(c,j)/s_y/1000._r8
                    if (qflx_lat_aqu_tot <= 0.) then
@@ -1089,7 +1088,7 @@ contains
                    h2osoi_liq(c,j) = h2osoi_liq(c,j) + qflx_lat_aqu_layer(c,j)
                    qflx_lat_aqu_tot = qflx_lat_aqu_tot - qflx_lat_aqu_layer(c,j)
 
-                   write(iulog,*), 'qflx_lat_aqu_layer at column and layer is ', qflx_lat_aqu_layer(c,j),c,j !cjw print out 
+                   !write(iulog,*), 'qflx_lat_aqu_layer at column and layer is ', qflx_lat_aqu_layer(c,j),c,j !cjw print out 
 
                    if (qflx_lat_aqu_tot >= 0.) then
                       zwt(c) = zwt(c) - qflx_lat_aqu_layer(c,j)/s_y/1000._r8
