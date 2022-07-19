@@ -1017,7 +1017,8 @@ contains
        do fc = 1, num_hydrologyc
            c = filter_hydrologyc(fc)
 
-           !qflx_lat_aqu_layer(c,:) = 0.0
+           !qflx_lat_aqu_layer(c,:) = 0.0              
+           write(iulog,*), 'water table module qflx_lat_aqu_layer at column and layer', qflx_lat_aqu_layer(c,:)   !cjw print out 
     
     ! use analytical expression for aquifer specific yield
              rous = watsat(c,nlevbed) &
@@ -1027,6 +1028,7 @@ contains
              qflx_rsub_sat(c) = 0._r8
        !-  water table is below the soil column -----------------------------------
           if(jwt(c) == nlevbed) then
+            write(iulog,*), 'water table module qflx_lat_aqu at column and layer', qflx_lat_aqu(c)  !cjw print out
               if (qflx_lat_aqu(c).gt.0._r8) then
                 wa(c)  = wa(c) + qflx_lat_aqu(c) * dtime
                !wt(c)  = wa(c)
@@ -1044,17 +1046,19 @@ contains
    !-- water table within soil layers 1-9  -------------------------------------
    ! try to raise water table to account for lateral flux qflx_lat_aqu
              qflx_lat_aqu_tot = qflx_lat_aqu(c)  * dtime
+             write(iulog,*), 'totflx water table module qflx_lat_aqu_tot at column and layer', qflx_lat_aqu_tot  !cjw print out
              if(qflx_lat_aqu_tot > 0.) then !rising water table
                 do j = jwt(c)+1, 1,-1
    ! use analytical expression for specific yield
                    s_y = watsat(c,j) &
                        * ( 1. -  (1.+1.e3*zwt(c)/sucsat(c,j))**(-1./bsw(c,j)))
                    s_y=max(s_y,0.02_r8)
-   
+                   write(iulog,*), 'before water table module qflx_lat_aqu_layer at column and layer', qflx_lat_aqu_layer(c,j)  !cjw print out   
                    qflx_lat_aqu_layer(c,j)=min(qflx_lat_aqu_tot,(s_y*(zwt(c) - zi(c,j-1))*1.e3))
                    qflx_lat_aqu_layer(c,j)=max(qflx_lat_aqu_layer(c,j),0._r8)
                    h2osoi_liq(c,j) = h2osoi_liq(c,j) + qflx_lat_aqu_layer(c,j)
                    qflx_lat_aqu_tot = qflx_lat_aqu_tot - qflx_lat_aqu_layer(c,j)
+                   write(iulog,*), 'after water table module qflx_lat_aqu_layer at column and layer', qflx_lat_aqu_layer(c,j)  !cjw print out 
                    !new code test DMR 4/29/13
                    if(s_y > 0._r8) zwt(c) = zwt(c) - qflx_lat_aqu_layer(c,j)/s_y/1000._r8
                    if (qflx_lat_aqu_tot <= 0.) then
@@ -1078,7 +1082,7 @@ contains
                   end if
                 end if
                 do j = jwt(c)+1, nlevbed
-   
+                  write(iulog,*), 'before2 qflx_lat_aqu_layer at column and layer', qflx_lat_aqu_layer(c,j)  !cjw print out 
    ! use analytical expression for specific yield
                    s_y = watsat(c,j) &
                         * ( 1. -  (1.+1.e3*zwt(c)/sucsat(c,j))**(-1./bsw(c,j)))
@@ -1088,7 +1092,7 @@ contains
                    h2osoi_liq(c,j) = h2osoi_liq(c,j) + qflx_lat_aqu_layer(c,j)
                    qflx_lat_aqu_tot = qflx_lat_aqu_tot - qflx_lat_aqu_layer(c,j)
 
-                   !write(iulog,*), 'qflx_lat_aqu_layer at column and layer is ', qflx_lat_aqu_layer(c,j),c,j !cjw print out 
+                   write(iulog,*), 'after2 qflx_lat_aqu_layer at column and layer is ', qflx_lat_aqu_layer(c,j),c,j !cjw print out 
 
                    if (qflx_lat_aqu_tot >= 0.) then
                       zwt(c) = zwt(c) - qflx_lat_aqu_layer(c,j)/s_y/1000._r8
