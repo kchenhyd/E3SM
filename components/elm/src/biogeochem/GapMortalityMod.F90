@@ -19,6 +19,7 @@ module GapMortalityMod
   use VegetationDataType  , only : veg_ps, veg_pf
 
   use elm_varctl          , only : nu_com
+  use elm_varctl             , only : iulog
   use timeinfoMod , only : dayspyr_mod
   !
   implicit none
