@@ -576,6 +576,11 @@ contains
          ! set decay factor
          this%hkdepth_col(c) = 1._r8/2.5_r8
 
+#if (defined MARSH)
+      ! Is this supposed to be set with fdrain?
+      ! this%hkdepth_col(c) = 4._r8/2.5_r8
+#endif
+
       end do
     end associate
 
