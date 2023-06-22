@@ -319,7 +319,13 @@ module pftvarcon
   real(r8)              :: humhol_ht_frac   ![Wei Huang 2022-08-17]fraction for 2nd plant
   real(r8)              :: hum_frac
   real(r8)              :: humhol_dist
-! Tidal cycle controls
+!MEM functions
+  !real(r8)              :: bulk_density         !bulk density (kg/m3)
+  real(r8)               :: sed_set_rate         !sediment settling (kg/m2/s)
+  real(r8)               :: sed_trap_rate        !sediment trapping (kg/m2/s)
+  real(r8)               :: erosion              !erosion (kg/m2/s)
+  elevation(r8)          :: elevation            ! elevation change (m) using MEM eqns
+!Tidal cycle controls
   integer               :: num_tide_comps      ! Number of tidal cycle components
   real(r8)              :: tide_baseline            ! Base tide level (mean of cycle) (mm)
   real(r8),allocatable  :: tide_coeff_amp(:)            ! Amplitude of tide component (mm)
@@ -1133,7 +1139,17 @@ contains
    call ncd_io('sal_tol', sal_tol(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
    if ( .not. readv ) sal_tol(:) = 50.0_r8 
    !call ncd_io('floodf', floodf(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
-   !if ( .not. readv ) floodf(:) = 1.0_r8 
+   !if ( .not. readv ) floodf(:) = 1.0_r8
+
+   ! MEM parameters
+   !call ncd_io('bulk_density', bulk_density, 'read', ncid,readvar=readv, posNOTonfile=.true.)
+   !if ( .not. readv ) bulk_density = 0.2_r8 !TAO
+   call ncd_io('sed_set_rate', sed_set_rate, 'read', ncid,readvar=readv, posNOTonfile=.true.)
+   if ( .not. readv ) sed_set_rate = 0.0_r8 !TAO
+   call ncd_io('sed_trap_rate', sed_trap_rate, 'read', ncid, readvar=readv,posNOTonfile=.true.)
+   if ( .not. readv ) sed_trap_rate = 0.0_r8 !TAO
+   call ncd_io('erosion', erosion, 'read', ncid, readvar=readv,posNOTonfile=.true.)
+   if ( .not. readv ) erosion = 0.0_r8
 #endif
 
     call ncd_io('phen_a', phen_a, 'read', ncid, readvar=readv, posNOTonfile=.true.)
