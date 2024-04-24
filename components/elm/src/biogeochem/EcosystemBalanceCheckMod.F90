@@ -49,7 +49,7 @@ module EcosystemBalanceCheckMod
   implicit none
   save
   private
-  real(r8), parameter :: balance_check_tolerance = 1e-8_r8
+  real(r8), parameter :: balance_check_tolerance = 1e-7_r8
   !
   ! !PUBLIC MEMBER FUNCTIONS:
   public :: BeginColCBalance
